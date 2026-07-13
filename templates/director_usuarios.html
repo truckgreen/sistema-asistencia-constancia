@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% block content %}
+<!-- Gestión de usuarios y registro de personal desde el panel directivo. -->
+<div class="row mb-4 fade-in-up">
+    <div class="col-md-12">
+        <h2 class="fw-bold text-dark mb-1">Gestión del Talento Humano</h2>
+        <p class="text-muted">Registro administrativo de fichas de personal y credenciales</p>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm fade-in-up mb-4" role="alert" style="border-radius: 10px;">
+                <i class="bi bi-info-circle-fill me-2"></i>{{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<div class="row g-4 fade-in-up">
+
+    <!-- Formulario de Registro -->
+
+    <div class="col-lg-5">
+        <div class="card card-premium shadow-sm p-4 border-start border-success border-4">
+            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-person-plus text-success me-2"></i>Incorporar Nuevo Funcionario</h5>
+            <form action="{{ url_for('crear_usuario') }}" method="POST">
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold text-muted mb-1">Nombres</label>
+                        <input type="text" name="nombre" class="form-control form-control-sm" required autocomplete="off">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold text-muted mb-1">Apellidos</label>
+                        <input type="text" name="apellido" class="form-control form-control-sm" required autocomplete="off">
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-semibold text-muted mb-1">Correo Electrónico </label>
+                    <input type="email" name="correo" class="form-control form-control-sm" placeholder="usuario@gmail.com" required autocomplete="off">
+                </div>
+                
+                <!-- Nuevos campos integrados -->
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold text-muted mb-1">Teléfono</label>
+                        <input type="text" name="telefono" class="form-control form-control-sm" placeholder="04xx-xxxxxxx" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold text-muted mb-1">Fecha de Nacimiento</label>
+                        <input type="date" name="fecha_nacimiento" class="form-control form-control-sm" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-muted mb-1">Rol Estructural / Cargo</label>
+                    <select name="rol" class="form-select form-select-sm" required>
+                        <option value="personal">Personal Docente (Profesor)</option>
+                        <option value="administrativo">Personal Administrativo</option>
+                        <option value="obrero">Personal Obrero / Operativo</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-success btn-sm w-100 fw-bold py-2 shadow-sm" style="border-radius: 8px;">
+                    Registrar y Generar Credenciales
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de Personal -->
+
+    <div class="col-lg-7">
+        <div class="card card-premium shadow-sm p-4">
+            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-journal-text text-muted me-2"></i>Nómina Activa de Personal</h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle small">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Funcionario</th>
+                            <th>Correo</th>
+                            <th>Teléfono</th> <!-- Columna añadida -->
+                            <th>Rol</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in personal_lista %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold text-dark">{{ p.apellido }}, {{ p.nombre }}</div>
+                            </td>
+                            <td>{{ p.correo }}</td>
+                            <td>{{ p.telefono or 'No registrado' }}</td> <!-- Dato añadido -->
+                            <td>
+                                <span class="badge rounded-pill bg-light text-dark border px-2 py-1 text-uppercase">
+                                    {{ p.rol }}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#editarUsuarioModal"
+                                        data-id="{{ p.id }}" 
+                                        data-nombre="{{ p.nombre }}" 
+                                        data-apellido="{{ p.apellido }}"
+                                        data-telefono="{{ p.telefono }}" 
+                                        data-rol="{{ p.rol }}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                
+                                <a href="{{ url_for('eliminar_usuario', id=p.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Seguro que deseas eliminar a {{ p.nombre }}?')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edición Profesional -->
+
+<div class="modal fade" id="editarUsuarioModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg border-0 rounded-4">
+      <div class="modal-header bg-primary text-white p-3">
+        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar Funcionario</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="formEditarUsuario" method="POST" action="">
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="form-label text-muted">Nombre</label>
+            <input type="text" class="form-control rounded-3" name="nombre" id="editNombre" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted">Apellido</label>
+            <input type="text" class="form-control rounded-3" name="apellido" id="editApellido" required>
+          </div>
+          <!-- Campo de teléfono añadido al modal -->
+          <div class="mb-3">
+            <label class="form-label text-muted">Teléfono</label>
+            <input type="text" class="form-control rounded-3" name="telefono" id="editTelefono" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted">Rol Estructural</label>
+            <select class="form-select rounded-3" name="rol" id="editRol">
+              <option value="personal">Personal Docente (Profesor)</option>
+              <option value="obrero">Obrero</option>
+              <option value="administrativo">Administrativo</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer border-0 p-3">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary px-4">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  const editarModal = document.getElementById('editarUsuarioModal');
+  editarModal.addEventListener('show.bs.modal', event => {
+    const button = event.relatedTarget;
+    document.getElementById('formEditarUsuario').action = `/directivo/editar_usuario/${button.getAttribute('data-id')}`;
+    document.getElementById('editNombre').value = button.getAttribute('data-nombre');
+    document.getElementById('editApellido').value = button.getAttribute('data-apellido');
+    
+
+    const telefonoValue = button.getAttribute('data-telefono');
+    document.getElementById('editTelefono').value = telefonoValue !== 'None' ? telefonoValue : '';
+    
+    document.getElementById('editRol').value = button.getAttribute('data-rol');
+  });
+</script>
+{% endblock %}

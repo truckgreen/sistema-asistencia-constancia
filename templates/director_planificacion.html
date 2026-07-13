@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row mb-4 fade-in-up">
+    <div class="col-md-12">
+        <h2 class="fw-bold text-dark mb-1">Planificación y Horarios</h2>
+        <p class="text-muted">Carga de actividades académicas e institucionales en la agenda</p>
+    </div>
+</div>
+
+<div class="row justify-content-center fade-in-up">
+    <div class="col-lg-6 col-md-8">
+        <div class="card card-premium shadow-sm p-4 border-start border-primary border-4">
+            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-calendar-event text-primary me-2"></i>Agendar Nueva Actividad</h5>
+            <form action="{{ url_for('crear_evento') }}" method="POST">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-muted">Nombre de la Asignación / Cátedra / Reunión</label>
+                    <input type="text" name="titulo" class="form-control" placeholder="Ej: Física de 5to Año, Consejo General" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-muted">Tipo de Actividad</label>
+                    <select name="tipo" id="tipoEvento" class="form-select" required>
+                        <option value="clase">Clase Académica Ordinaria</option>
+                        <option value="feriado">Día Feriado Obligatorio</option>
+                        <option value="institucional">Evento / Reunión Administrativa</option>
+                    </select>
+                </div>
+                <div class="mb-3" id="bloqueProfesor">
+                    <label class="form-label small fw-semibold text-muted">Docente Titular Responsable</label>
+                    <select name="profesor_id" class="form-select">
+                        {% for prof in profesores %}
+                            <option value="{{ prof.id }}">{{ prof.apellido }}, {{ prof.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold text-muted">Fecha y Hora de Inicio</label>
+                        <input type="datetime-local" name="fecha_inicio" class="form-control" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold text-muted">Fecha y Hora de Cierre</label>
+                        <input type="datetime-local" name="fecha_fin" class="form-control" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm" style="border-radius: 8px;">
+                    <i class="bi bi-cloud-check me-2"></i>Publicar e Indexar en Calendario
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('tipoEvento').addEventListener('change', function() {
+        document.getElementById('bloqueProfesor').classList.toggle('d-none', this.value !== 'clase');
+    });
+</script>
+{% endblock %}

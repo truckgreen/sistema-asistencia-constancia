@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block content %}
+<!-- Estilos de presentación del formulario de acceso. -->
+<style>
+    .login-wrapper {
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: radial-gradient(circle at 80% 20%, rgba(212, 175, 55, 0.15) 0%, transparent 50%),
+                    linear-gradient(135deg, #DF5C12 0%, #0C5528 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    .bg-logo-watermark {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 70vh;
+        height: 70vh;
+        background-image: url("{{ url_for('static', filename='img/logo.png') }}");
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        opacity: 0.50;
+        filter: blur(0px);
+        z-index: 1;
+        pointer-events: none;
+    }
+    .glass-card {
+        background: rgba(179, 154, 154, 0.322);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 24px;
+        padding: 40px;
+        width: 100%;
+        max-width: 440px;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.35);
+        z-index: 5;
+    }
+    .glass-input {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        color: #000000 !important;
+        border-radius: 10px;
+    }
+    .glass-input:focus {
+        background: rgba(255, 255, 255, 0.8);
+        border-color: #DF5C12;
+        box-shadow: 0 0 10px rgba(223, 92, 18, 0.4);
+    }
+    .glass-input::placeholder { color: rgba(0, 0, 0, 0.4); }
+</style>
+
+<div class="login-wrapper">
+    <div class="bg-logo-watermark"></div>
+
+    <div class="glass-card text-center fade-in-up">
+        <div class="mb-3" style="font-size: 2.8rem; color: #DF5C12;">
+            <i class="bi bi-shield-lock-fill"></i>
+        </div>
+        <h3 class="text-dark fw-bold mb-1">U.E. "La Constancia"</h3>
+        <p class="text-dark small mb-4">Sistema de Control de Asistencias & Agenda del Personal</p>
+
+        {% if error %}
+            <div class="alert alert-danger py-2 small border-0" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}
+            </div>
+        {% endif %}
+
+        <form action="/" method="POST" autocomplete="off">
+            {% if next %}
+                <input type="hidden" name="next" value="{{ next }}">
+            {% endif %}
+            <div class="mb-3 text-start">
+                <label class="text-dark small mb-1 fw-medium">Correo Electrónico </label>
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-0 text-dark"><i class="bi bi-envelope"></i></span>
+                    <input type="email" name="correo" class="form-control glass-input" placeholder="usuario@constancia.edu" required>
+                </div>
+            </div>
+            <div class="mb-4 text-start">
+                <label class="text-dark small mb-1 fw-medium">Contraseña de Seguridad</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-0 text-dark"><i class="bi bi-key"></i></span>
+                    <input type="password" name="password" class="form-control glass-input" placeholder="••••••••" required>
+                </div>
+            </div>
+            <button type="submit" class="btn w-100 fw-bold py-2.5 text-white shadow-sm" style="background-color: #DF5C12; border:none; border-radius: 10px;">
+                <i class="bi bi-box-arrow-in-right me-1"></i> Validar Acceso
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

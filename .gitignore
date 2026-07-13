@@ -1,0 +1,14 @@
+# Entorno virtual
+.venv/
+venv/
+
+# Base de datos y configuración local
+instance/
+*.db
+
+# Archivos temporales de Python
+__pycache__/
+*.pyc
+
+# Archivos del sistema
+.DS_Store

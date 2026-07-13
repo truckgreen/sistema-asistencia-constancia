@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row mb-4 align-items-center fade-in-up">
+    <div class="col-md-7">
+        <!-- Encabezado principal del panel directivo. -->
+        <h2 class="fw-bold text-dark mb-0">Consola de Control Directivo</h2>
+        <p class="text-muted mb-0">Gestión horaria escolar y auditoría institucional</p>
+    </div>
+    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+        <a href="{{ url_for('generar_qr') }}" class="btn btn-dark px-3 py-2 shadow-sm me-2" style="border-radius: 10px;">
+            <i class="bi bi-qr-code-scan text-warning me-1"></i> Desplegar QR de Entrada
+        </a>
+        <a href="{{ url_for('reporte_asistencia') }}" class="btn btn-outline-primary bg-white px-3 py-2 shadow-sm" style="border-radius: 10px;">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Ver Libro de Asistencia
+        </a>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm fade-in-up" role="alert" style="border-radius: 10px;">
+                <i class="bi bi-info-circle-fill me-2"></i>{{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<div class="row g-4 fade-in-up">
+    <!-- Sidebar de Notificaciones -->
+    <div class="col-md-3">
+        <div class="card shadow-sm mb-4 border-0 border-start border-danger border-4">
+            <div class="card-header bg-danger text-white fw-bold"><i class="bi bi-person-x-fill me-2"></i>Inasistencias Hoy</div>
+            <div class="card-body">
+                {% for inasistencia in inasistencias_hoy %}
+                    <p class="small text-danger fw-bold mb-1 border-bottom pb-1">
+                        {{ inasistencia.usuario.apellido }}, {{ inasistencia.usuario.nombre }}
+                    </p>
+                {% else %}
+                    <p class="small text-muted text-center"><i class="bi bi-check-circle me-1 text-success"></i> Sin reportes hoy.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4 border-0">
+            <div class="card-header bg-warning fw-bold text-dark">Cumpleaños hoy</div>
+            <div class="card-body">
+                {% for c in cumpleaneros %}
+                    <p class="small text-dark fw-bold">🎉 {{ c.nombre }} {{ c.apellido }}</p>
+                {% else %}
+                    <p class="small text-muted">Sin cumpleaños hoy.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-info text-white fw-bold">Actividades Externas</div>
+            <div class="card-body">
+                {% for e in eventos_externos %}
+                    <p class="small text-primary mb-1">
+                        <strong>{{ e.fecha_inicio.strftime('%d/%m') }}:</strong> {{ e.titulo }}
+                    </p>
+                {% else %}
+                    <p class="small text-muted">Sin actividades externas.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendario -->
+    <div class="col-md-9">
+        <div class="card card-premium shadow-sm p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-dark mb-0"><i class="bi bi-grid-3x3-gap-fill text-muted me-2"></i>Visor de Actividades</h5>
+                <select id="filtroProfesor" class="form-select form-select-sm w-auto" style="border-radius: 8px; min-width: 250px;">
+                    <option value="todos">Visualizar Agenda Completa</option>
+                    {% for prof in profesores %}
+                        <option value="{{ prof.id }}">{{ prof.apellido }}, {{ prof.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div id="calendar" class="p-2 bg-light rounded shadow-inner" style="min-height: 520px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modificación Evento -->
+<div class="modal fade" id="modalModificarEvento" data-bs-backdrop="static" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius: 16px;">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square text-warning me-2"></i>Reajustar Actividad</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('modificar_evento') }}" method="POST">
+                <div class="modal-body p-4">
+                    <input type="hidden" name="evento_id" id="mod_evento_id">
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Título</label>
+                        <input type="text" name="titulo" id="mod_titulo" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Naturaleza</label>
+                        <select name="tipo" id="mod_tipo" class="form-select" required>
+                            <option value="clase">Clase Ordinaria Académica</option>
+                            <option value="feriado">Feriado Obligatorio</option>
+                            <option value="institucional">Reunión de Personal</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="mod_bloqueProfesor">
+                        <label class="form-label small text-muted">Docente</label>
+                        <select name="profesor_id" id="mod_profesor_id" class="form-select">
+                            {% for prof in profesores %}
+                                <option value="{{ prof.id }}">{{ prof.apellido }}, {{ prof.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label small text-muted">Inicio</label>
+                            <input type="datetime-local" name="fecha_inicio" id="mod_fecha_inicio" class="form-control" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-muted">Cierre</label>
+                            <input type="datetime-local" name="fecha_fin" id="mod_fecha_fin" class="form-control" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-primary fw-bold">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            locale: 'es', initialView: 'timeGridWeek', slotMinTime: '07:00:00', slotMaxTime: '18:00:00',
+            allDaySlot: false,
+            headerToolbar: { left: 'prev,next today', center: 'title', right: 'timeGridWeek,dayGridMonth' },
+            events: '/api/eventos',
+            eventClick: function(info) {
+                fetch('/api/evento/' + info.event.id)
+                    .then(r => r.json())
+                    .then(data => {
+                        document.getElementById('mod_evento_id').value = data.id;
+                        document.getElementById('mod_titulo').value = data.titulo;
+                        document.getElementById('mod_tipo').value = data.tipo;
+                        document.getElementById('mod_fecha_inicio').value = data.fecha_inicio;
+                        document.getElementById('mod_fecha_fin').value = data.fecha_fin;
+                        document.getElementById('mod_bloqueProfesor').classList.toggle('d-none', data.tipo !== 'clase');
+                        if(data.tipo === 'clase') document.getElementById('mod_profesor_id').value = data.profesor_id;
+                        new bootstrap.Modal(document.getElementById('modalModificarEvento')).show();
+                    });
+            }
+        });
+        calendar.render();
+
+        document.getElementById('filtroProfesor').addEventListener('change', function() {
+            calendar.getEventSources().forEach(src => src.remove());
+            calendar.addEventSource('/api/eventos?profesor_id=' + this.value);
+        });
+    });
+
+    document.getElementById('mod_tipo').addEventListener('change', function() {
+        document.getElementById('mod_bloqueProfesor').classList.toggle('d-none', this.value !== 'clase');
+    });
+</script>
+{% endblock %}

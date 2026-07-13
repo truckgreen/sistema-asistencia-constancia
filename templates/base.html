@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ecosistema Escolar - U.E. La Constancia</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- FullCalendar CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #f4f7f6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .navbar-custom {
+            background-color: #0C5528;
+            border-bottom: 3px solid #DF5C12;
+        }
+        .card-premium {
+            border: none;
+            border-radius: 12px;
+            background: #ffffff;
+        }
+        .fade-in-up {
+            animation: fadeInUp 0.5s ease-out;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .navbar-custom .navbar-brand, 
+        .navbar-custom .nav-link, 
+        .navbar-custom .text-white,
+        .navbar-custom .btn-outline-light {
+            color: #ffffff;
+        }
+        .bg-logo-watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 70vh;
+            height: 70vh;
+            background-image: url("{{ url_for('static', filename='img/logo.png') }}");
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            opacity: 0.20;
+            filter: blur(3px);
+            z-index: 1;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="bg-logo-watermark"></div>
+
+    <!-- Barra de Navegación Superior -->
+    {% if session.get('usuario_id') %}
+    <nav class="navbar navbar-expand-lg navbar-custom navbar-dark shadow-sm mb-4">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="bi bi-mortarboard-fill text-warning me-2"></i>La Constancia
+            </a>
+            
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#menuPrincipal">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="menuPrincipal">
+                {% if session.get('rol') == 'directivo' %}
+                <ul class="navbar-nav mx-auto mb-2 mb-lg-0 gap-2">
+                    <li class="nav-item">
+                        <a class="nav-link px-3 {% if request.endpoint == 'dashboard_directivo' and not request.args.get('tipo_registro') %}text-warning fw-bold{% endif %}" href="{{ url_for('dashboard_directivo') }}">
+                            <i class="bi bi-calendar3 me-1"></i> Visor de Horarios
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link px-3 {% if request.endpoint == 'directivo_planificacion' %}text-warning fw-bold{% endif %}" href="{{ url_for('directivo_planificacion') }}">
+                            <i class="bi bi-calendar-plus me-1"></i> Planificación
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link px-3 {% if request.endpoint == 'directivo_usuarios' %}text-warning fw-bold{% endif %}" href="{{ url_for('directivo_usuarios') }}">
+                            <i class="bi bi-people me-1"></i> Gestión de Personal
+                        </a>
+                    </li>
+                    <!-- NUEVA OPCIÓN CORREGIDA: Sin fondo blanco, integrado perfectamente -->
+                    <li class="nav-item">
+                        <a class="nav-link px-3 {% if request.args.get('tipo_registro') == 'inasistencias' %}text-warning fw-bold{% endif %}" href="{{ url_for('reporte_asistencia') }}?tipo_registro=inasistencias">
+                            <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> Control de Inasistencias
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link px-3 {% if request.endpoint == 'directivo_configuracion' %}text-warning fw-bold{% endif %}" href="{{ url_for('directivo_configuracion') }}">
+                            <i class="bi bi-gear me-1"></i> Parámetros
+                        </a>
+                    </li>
+                </ul>
+                {% else %}
+                <div class="mx-auto"></div>
+                {% endif %}
+                
+                <div class="d-flex align-items-center mt-3 mt-lg-0">
+                    <span class="text-white small me-3">
+                        <i class="bi bi-person-circle text-warning me-1"></i> {{ session.get('nombre') }} 
+                        <span class="badge bg-secondary small ms-1" style="font-size: 0.65rem;">{{ session.get('rol').upper() }}</span>
+                    </span>
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm px-3 border-0">
+                        <i class="bi bi-box-arrow-right text-warning"></i> Salir
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <div class="container mb-5">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js"></script>
+</body>
+</html>

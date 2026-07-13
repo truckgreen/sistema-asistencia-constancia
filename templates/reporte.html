@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row mb-4 align-items-center fade-in-up">
+    <div class="col-6">
+        <h3 class="fw-bold text-dark mb-0">Libro Digital de Asistencia</h3>
+        <p class="text-muted mb-0">Auditoría cronológica estricta</p>
+    </div>
+    <div class="col-6 text-end">
+        <a href="{{ url_for('dashboard_directivo') }}" class="btn btn-outline-secondary btn-sm px-3" style="border-radius: 8px;">
+            <i class="bi bi-house-door"></i> Consola Principal
+        </a>
+    </div>
+</div>
+
+<!-- Panel de Filtros -->
+<div class="card shadow-sm p-3 mb-4 border-0">
+    <form method="GET" action="{{ url_for('reporte_asistencia') }}" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="small fw-bold text-muted">Filtrar por Rol</label>
+            <select name="rol" class="form-select form-select-sm">
+                <option value="todos">Todos los Roles</option>
+                <option value="personal">Docente</option>
+                <option value="administrativo">Administrativo</option>
+                <option value="obrero">Obrero</option>
+            </select>
+        </div>
+        
+        <div class="col-md-4">
+            <label class="small fw-bold text-muted">Filtrar por Funcionario</label>
+            <select name="usuario_id" class="form-select form-select-sm">
+                <option value="todos">Todos los Funcionarios</option>
+                {% for u in usuarios %}
+                    <option value="{{ u.id }}">{{ u.apellido }}, {{ u.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="col-md-4">
+            <label class="small fw-bold text-muted">Tipo de Registro</label>
+            <select name="tipo_registro" class="form-select form-select-sm">
+                <option value="todos">Asistencias e Inasistencias</option>
+                <option value="asistencias">Solo Asistencias</option>
+                <option value="inasistencias">Solo Inasistencias</option>
+            </select>
+        </div>
+
+        <div class="col-md-4">
+            <label class="small fw-bold text-muted">Desde</label>
+            <input type="date" name="fecha_inicio" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-4">
+            <label class="small fw-bold text-muted">Hasta</label>
+            <input type="date" name="fecha_fin" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-4">
+            <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Aplicar Filtros</button>
+        </div>
+    </form>
+</div>
+
+<!-- Tabla de Resultados -->
+<div class="card card-premium shadow-sm overflow-hidden fade-in-up">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark" style="background-color: #002147;">
+                    <tr>
+                        <th class="ps-4 py-3">Fecha de Jornada</th>
+                        <th class="py-3">Funcionario / Empleado</th>
+                        <th class="py-3">Estampado de Tiempo</th>
+                        <th class="pe-4 py-3 text-end">Estatus Operativo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for registro in asistencias %}
+                    <tr>
+                        <td class="ps-4 fw-medium text-secondary">{{ registro.fecha.strftime('%d/%m/%Y') }}</td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ registro.usuario.apellido }}, {{ registro.usuario.nombre }}</div>
+                            <div class="text-muted small" style="font-size: 0.72rem;">{{ registro.usuario.correo }} | Rol: {{ registro.usuario.rol.upper() }}</div>
+                        </td>
+                        <td class="fw-medium">
+                            <i class="bi bi-clock me-1 text-muted"></i> 
+                            {{ registro.hora_registro.strftime('%I:%M:%S %p') }}
+                        </td>
+                        <td class="pe-4 text-end">
+                            {% if registro.estado == 'A tiempo' %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill">
+                                    <i class="bi bi-check-circle-fill me-1"></i> A Tiempo
+                                </span>
+                            {% elif registro.estado == 'Inasistencia Reportada' %}
+                                <!-- Botón que abre el Modal de justificación -->
+                                <button type="button" class="btn btn-sm btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalDetalle{{ registro.id }}">
+                                    <i class="bi bi-info-circle-fill me-1"></i> Justificada
+                                </button>
+                            {% elif registro.estado == 'Ausente' %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 rounded-pill">
+                                    <i class="bi bi-x-circle-fill me-1"></i> Ausente
+                                </span>
+                            {% else %}
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 rounded-pill">
+                                    <i class="bi bi-exclamation-octagon-fill me-1"></i> Con Retraso
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <!-- Modal de Detalles (Solo se renderiza si es Inasistencia Reportada) -->
+                    {% if registro.estado == 'Inasistencia Reportada' %}
+                    <div class="modal fade" id="modalDetalle{{ registro.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Detalles de Justificación</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p><strong>Fecha del reporte:</strong> {{ registro.fecha.strftime('%d/%m/%Y') }}</p>
+                                    <p><strong>Motivo:</strong><br>{{ registro.motivo }}</p>
+                                    <p><strong>Observaciones:</strong><br>{{ registro.observaciones }}</p>
+                                    
+                                    {% if registro.archivo_adjunto %}
+                                        <hr>
+                                        <p><strong>Documento Adjunto:</strong></p>
+                                        <a href="{{ url_for('static', filename='uploads/' + registro.archivo_adjunto) }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                            <i class="bi bi-file-earmark-text"></i> Ver Archivo
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox text-muted d-block mb-2" style="font-size: 2.5rem;"></i>
+                            No se encontraron registros con los criterios seleccionados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

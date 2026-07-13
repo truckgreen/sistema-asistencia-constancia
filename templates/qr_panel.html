@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<!-- Página de presentación del código QR generado para el control de asistencia. -->
+<div class="row justify-content-center fade-in-up">
+    <div class="col-md-6 text-center mt-3">
+        <div class="card card-premium shadow-lg p-4 border-top border-primary border-4">
+            <div class="py-2 border-bottom mb-4">
+                <h4 class="fw-bold text-dark mb-1"><i class="bi bi-qr-code text-primary me-2"></i>Estación de Registro de QR</h4>
+                <p class="text-muted small mb-0">U.E. "La Constancia" - Control Centralizado</p>
+            </div>
+            
+            <p class="text-muted px-2 small">Enfoque la cámara de su dispositivo móvil sobre el QR para validar de forma automática su hora de llegada.</p>
+            
+            <div class="p-4 bg-white d-inline-block rounded border shadow-sm mx-auto my-2" style="border: 2px dashed var(--gold-accent) !important;">
+                <img src="data:image/png;base64,{{ qr_code }}" alt="Matriz QR Asistencia" class="img-fluid" style="max-width: 250px;">
+            </div>
+
+            <div class="alert alert-warning py-2 mx-2 text-start small mt-3" style="border-radius: 8px; font-size: 0.78rem;">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>Este token dinámico registra y guarda su registro diario de forma segura. 
+            </div>
+            
+            <div class="pt-3 border-top mt-4 d-flex justify-content-between">
+                <a href="{{ url_for('dashboard_directivo') }}" class="btn btn-outline-secondary btn-sm px-3" style="border-radius: 8px;">
+                    <i class="bi bi-arrow-left"></i> Volver a Consola
+                </a>
+                <button onclick="window.print()" class="btn btn-primary btn-sm px-4 fw-bold" style="border-radius: 8px;">
+                    <i class="bi bi-printer"></i> Imprimir QR
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
