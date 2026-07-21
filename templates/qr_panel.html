@@ -11,8 +11,20 @@
             
             <p class="text-muted px-2 small">Enfoque la cámara de su dispositivo móvil sobre el QR para validar de forma automática su hora de llegada.</p>
             
-            <div class="p-4 bg-white d-inline-block rounded border shadow-sm mx-auto my-2" style="border: 2px dashed var(--gold-accent) !important;">
+            <div class="p-4 bg-white d-inline-block rounded border shadow-sm mx-auto my-2" style="border: 2px dashed var(--bs-warning) !important;">
+                {% if qr_svg %}
+                <div class="qr-svg mx-auto" style="width:260px; height:260px; display:flex; align-items:center; justify-content:center;">
+                    {% if qr_svg_b64 %}
+                        <img src="data:image/svg+xml;base64,{{ qr_svg_b64 }}" alt="Matriz QR Asistencia" style="width:220px; height:220px;" />
+                    {% else %}
+                        <div style="width:220px; height:220px;">
+                            {{ qr_svg|safe }}
+                        </div>
+                    {% endif %}
+                </div>
+                {% else %}
                 <img src="data:image/png;base64,{{ qr_code }}" alt="Matriz QR Asistencia" class="img-fluid" style="max-width: 250px;">
+                {% endif %}
             </div>
 
             <div class="alert alert-warning py-2 mx-2 text-start small mt-3" style="border-radius: 8px; font-size: 0.78rem;">

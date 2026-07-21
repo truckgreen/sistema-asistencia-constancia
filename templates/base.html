@@ -43,16 +43,17 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 70vh;
-            height: 70vh;
+            width: 80vh;
+            height: 80vh;
             background-image: url("{{ url_for('static', filename='img/logo.png') }}");
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
-            opacity: 0.20;
-            filter: blur(3px);
-            z-index: 1;
+            opacity: 0.10;
+            filter: none;
+            z-index: 0;
             pointer-events: none;
+            mix-blend-mode: multiply;
         }
     </style>
 </head>

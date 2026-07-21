@@ -28,9 +28,9 @@
         <div class="col-md-4">
             <label class="small fw-bold text-muted">Filtrar por Funcionario</label>
             <select name="usuario_id" class="form-select form-select-sm">
-                <option value="todos">Todos los Funcionarios</option>
+                <option value="todos" {% if selected_usuario_id == 'todos' or not selected_usuario_id %}selected{% endif %}>Todos los Funcionarios</option>
                 {% for u in usuarios %}
-                    <option value="{{ u.id }}">{{ u.apellido }}, {{ u.nombre }}</option>
+                    <option value="{{ u.id }}" {% if selected_usuario_id == u.id|string %}selected{% endif %}>{{ u.apellido }}, {{ u.nombre }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -38,19 +38,19 @@
         <div class="col-md-4">
             <label class="small fw-bold text-muted">Tipo de Registro</label>
             <select name="tipo_registro" class="form-select form-select-sm">
-                <option value="todos">Asistencias e Inasistencias</option>
-                <option value="asistencias">Solo Asistencias</option>
-                <option value="inasistencias">Solo Inasistencias</option>
+                <option value="todos" {% if selected_tipo_registro == 'todos' or not selected_tipo_registro %}selected{% endif %}>Asistencias e Inasistencias</option>
+                <option value="asistencias" {% if selected_tipo_registro == 'asistencias' %}selected{% endif %}>Solo Asistencias</option>
+                <option value="inasistencias" {% if selected_tipo_registro == 'inasistencias' %}selected{% endif %}>Solo Inasistencias</option>
             </select>
         </div>
 
         <div class="col-md-4">
             <label class="small fw-bold text-muted">Desde</label>
-            <input type="date" name="fecha_inicio" class="form-control form-control-sm">
+            <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ fecha_inicio }}">
         </div>
         <div class="col-md-4">
             <label class="small fw-bold text-muted">Hasta</label>
-            <input type="date" name="fecha_fin" class="form-control form-control-sm">
+            <input type="date" name="fecha_fin" class="form-control form-control-sm" value="{{ fecha_fin }}">
         </div>
         <div class="col-md-4">
             <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold">Aplicar Filtros</button>

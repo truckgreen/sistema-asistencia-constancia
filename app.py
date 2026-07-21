@@ -15,9 +15,15 @@ import base64
 app = Flask(__name__)
 # Definición de la llave secreta para el manejo seguro de sesiones (cookies cifradas)
 app.config['SECRET_KEY'] = 'clave_secreta_institucional_estricta_constancia'
-# Configuración de la base de datos local SQLite
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sistema_academico.db'
+
+# Ubicación local de la base de datos y carpeta de archivos adjuntos.
+instance_db_path = os.path.join(app.root_path, 'instance', 'sistema_academico.db')
+os.makedirs(os.path.dirname(instance_db_path), exist_ok=True)
+app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{instance_db_path.replace('\\', '/') }"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB máximo para adjuntos
 
 # Inicialización de la base de datos con la aplicación Flask
 db.init_app(app)
@@ -184,12 +190,22 @@ def reporte_asistencia():
     asistencias = query.order_by(AsistenciaDiaria.hora_registro.desc()).all()
     todos_los_usuarios = Usuario.query.order_by(Usuario.apellido).all()
     
-    return render_template('reporte.html', asistencias=asistencias, usuarios=todos_los_usuarios)
+    return render_template(
+        'reporte.html',
+        asistencias=asistencias,
+        usuarios=todos_los_usuarios,
+        selected_rol=rol_filtro or 'todos',
+        selected_usuario_id=usuario_id_filtro or 'todos',
+        selected_tipo_registro=tipo_registro or 'todos',
+        fecha_inicio=fecha_inicio or '',
+        fecha_fin=fecha_fin or ''
+    )
 
 @app.route('/directivo')
 def dashboard_directivo():
     """Panel principal del directivo: muestra cumpleaños, eventos y personal."""
-    if session.get('rol') != 'directivo': return redirect(url_for('login'))
+    if session.get('rol') != 'directivo':
+        return redirect(url_for('login'))
     hoy = datetime.now()
     
     # Selecciona los usuarios con cumpleaños en la fecha actual.
@@ -197,12 +213,11 @@ def dashboard_directivo():
         extract('month', Usuario.fecha_nacimiento) == hoy.month,
         extract('day', Usuario.fecha_nacimiento) == hoy.day
     ).all()
-    if session.get('rol') != 'directivo': return redirect(url_for('login'))
-    hoy = datetime.now()
     
-    cumpleaneros = Usuario.query.filter(
-        extract('month', Usuario.fecha_nacimiento) == hoy.month,
-        extract('day', Usuario.fecha_nacimiento) == hoy.day
+    # Reporta las inasistencias justificadas del día.
+    inasistencias_hoy = AsistenciaDiaria.query.filter_by(
+        fecha=hoy.date(),
+        estado='Inasistencia Reportada'
     ).all()
     
     # Filtro: eventos del día actual
@@ -217,7 +232,8 @@ def dashboard_directivo():
     return render_template('director.html', 
                            profesores=profesores, 
                            cumpleaneros=cumpleaneros, 
-                           eventos_externos=eventos_externos)
+                           eventos_externos=eventos_externos,
+                           inasistencias_hoy=inasistencias_hoy)
 
 @app.route('/directivo/planificacion')
 def directivo_planificacion():
@@ -256,15 +272,22 @@ def dashboard_personal():
 @app.route('/directivo/configurar_hora', methods=['POST'])
 def configurar_hora():
     """Actualiza la hora de entrada en la base de datos."""
-    if session.get('rol') != 'directivo': return redirect(url_for('login'))
-    
+    if session.get('rol') != 'directivo':
+        return redirect(url_for('login'))
     config = Configuracion.query.first()
-    config.hora_entrada_oficial = request.form['hora_entrada']
-    db.session.commit()
-    
-    flash('La hora de entrada oficial fue modificada correctamente.', 'success')
-    return redirect(url_for('directivo_configuracion'))
+    if not config:
+        config = Configuracion(hora_entrada_oficial="07:30")
+        db.session.add(config)
 
+    nueva_hora = request.form.get('hora_entrada')
+    try:
+        datetime.strptime(nueva_hora, '%H:%M')
+        config.hora_entrada_oficial = nueva_hora
+        db.session.commit()
+        flash('La hora de entrada oficial fue modificada correctamente.', 'success')
+    except (ValueError, TypeError):
+        flash('Formato inválido para la hora de entrada. Use HH:MM.', 'danger')
+    return redirect(url_for('directivo_configuracion'))
 @app.route('/directivo/crear_usuario', methods=['POST'])
 def crear_usuario():
     """Registra un nuevo usuario con generación de contraseña temporal."""
@@ -284,10 +307,18 @@ def crear_usuario():
     
     password_plano = generar_contrasena_aleatoria()
     
+    fecha_nacimiento = None
+    if fecha_nac:
+        try:
+            fecha_nacimiento = datetime.strptime(fecha_nac, '%Y-%m-%d')
+        except ValueError:
+            flash('La fecha de nacimiento no tiene el formato esperado.', 'danger')
+            return redirect(url_for('directivo_usuarios'))
+
     nuevo_usuario = Usuario(
         nombre=nombre, apellido=apellido, correo=correo, rol=rol,
         telefono=telefono,
-        fecha_nacimiento=datetime.strptime(fecha_nac, '%Y-%m-%d') if fecha_nac else None
+        fecha_nacimiento=fecha_nacimiento
     )
     nuevo_usuario.set_password(password_plano)
     db.session.add(nuevo_usuario)
@@ -304,6 +335,7 @@ def editar_usuario(id):
     usuario.nombre = request.form['nombre']
     usuario.apellido = request.form['apellido']
     usuario.rol = request.form['rol']
+    usuario.telefono = request.form.get('telefono')
     db.session.commit()
     flash('Personal actualizado correctamente.', 'success')
     return redirect(url_for('directivo_usuarios'))
@@ -335,17 +367,41 @@ def generar_qr():
         base_url = request.host_url.rstrip('/')
     enlace_registro = f"{base_url}{url_for('registrar_asistencia')}"
     
-    # Construye y renderiza el código QR en formato PNG.
+    # Construye el código QR; preferimos SVG para evitar depender de PIL.
     qr = qrcode.QRCode(version=1, box_size=10, border=2)
     qr.add_data(enlace_registro)
     qr.make(fit=True)
-    
-    img = qr.make_image(fill_color="#002147", back_color="white")
-    buf = io.BytesIO()
-    img.save(buf, format='PNG')
-    qr_b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
-    
-    return render_template('qr_panel.html', qr_code=qr_b64)
+
+    qr_svg = None
+    qr_b64 = None
+    try:
+        # Intentamos generar SVG (no necesita Pillow)
+        import qrcode.image.svg as qsvg
+        img = qr.make_image(image_factory=qsvg.SvgImage)
+        buf = io.BytesIO()
+        img.save(buf)
+        qr_svg = buf.getvalue().decode('utf-8')
+        # Algunos backends SVG incluyen una cabecera XML prolog que rompe
+        # el render inline cuando se inserta dentro de HTML. La eliminamos.
+        if qr_svg.lstrip().startswith('<?xml'):
+            idx = qr_svg.find('<svg')
+            if idx != -1:
+                qr_svg = qr_svg[idx:]
+    except Exception:
+        # Fallback a PNG (requiere Pillow). Si Pillow no está instalado, esto lanzará el error original.
+        img = qr.make_image(fill_color="#002147", back_color="white")
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        qr_b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+
+    qr_svg_b64 = None
+    if qr_svg:
+        try:
+            qr_svg_b64 = base64.b64encode(qr_svg.encode('utf-8')).decode('utf-8')
+        except Exception:
+            qr_svg_b64 = None
+
+    return render_template('qr_panel.html', qr_code=qr_b64, qr_svg=qr_svg, qr_svg_b64=qr_svg_b64)
 
 @app.route('/asistencia/registrar', methods=['GET'])
 def registrar_asistencia():
@@ -446,12 +502,26 @@ def crear_evento():
     """Guarda un nuevo evento en la agenda."""
     if session.get('rol') != 'directivo': return redirect(url_for('login'))
     
+    try:
+        fecha_inicio = datetime.strptime(request.form['fecha_inicio'], '%Y-%m-%dT%H:%M')
+        fecha_fin = datetime.strptime(request.form['fecha_fin'], '%Y-%m-%dT%H:%M')
+    except (ValueError, TypeError):
+        flash('Fechas no válidas. Use el selector de fecha y hora correctamente.', 'danger')
+        return redirect(url_for('directivo_planificacion'))
+
+    profesor_id = None
+    if request.form.get('tipo') == 'clase' and request.form.get('profesor_id'):
+        try:
+            profesor_id = int(request.form['profesor_id'])
+        except ValueError:
+            profesor_id = None
+
     nuevo_evento = Evento(
         titulo=request.form['titulo'],
-        fecha_inicio=datetime.strptime(request.form['fecha_inicio'], '%Y-%m-%dT%H:%M'),
-        fecha_fin=datetime.strptime(request.form['fecha_fin'], '%Y-%m-%dT%H:%M'),
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
         tipo=request.form['tipo'],
-        profesor_id=int(request.form['profesor_id']) if (request.form['tipo'] == 'clase' and request.form.get('profesor_id')) else None
+        profesor_id=profesor_id
     )
     db.session.add(nuevo_evento)
     db.session.commit()
@@ -499,8 +569,8 @@ def registrar_inasistencia():
     ruta_archivo = None
     if archivo and archivo.filename != '':
         filename = secure_filename(archivo.filename)
-        # El sistema guarda archivos en static/uploads para referencia posterior.
-        archivo.save(os.path.join('static/uploads', filename))
+        archivo_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        archivo.save(archivo_path)
         ruta_archivo = filename
     
     # Inserta el registro de inasistencia con los detalles proporcionados.

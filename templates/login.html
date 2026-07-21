@@ -64,6 +64,16 @@
         <h3 class="text-dark fw-bold mb-1">U.E. "La Constancia"</h3>
         <p class="text-dark small mb-4">Sistema de Control de Asistencias & Agenda del Personal</p>
 
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} py-2 small border-0" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         {% if error %}
             <div class="alert alert-danger py-2 small border-0" role="alert">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}
