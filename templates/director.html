@@ -2,9 +2,8 @@
 {% block content %}
 <div class="row mb-4 align-items-center fade-in-up">
     <div class="col-md-7">
-        <!-- Encabezado principal del panel directivo. -->
-        <h2 class="fw-bold text-dark mb-0">Consola de Control Directivo</h2>
-        <p class="text-muted mb-0">Gestión horaria escolar y auditoría institucional</p>
+        <h2 class="fw-bold text-dark mb-0">Consola Ejecutiva del Directivo</h2>
+        <p class="text-muted mb-0">Vista rápida del estado escolar, asistencia y justificaciones del día</p>
     </div>
     <div class="col-md-5 text-md-end mt-3 mt-md-0">
         <a href="{{ url_for('generar_qr') }}" class="btn btn-dark px-3 py-2 shadow-sm me-2" style="border-radius: 10px;">
@@ -27,19 +26,89 @@
     {% endif %}
 {% endwith %}
 
-<div class="row g-4 fade-in-up">
-    <!-- Sidebar de Notificaciones -->
+<div class="row g-3 mb-4 fade-in-up">
     <div class="col-md-3">
-        <div class="card shadow-sm mb-4 border-0 border-start border-danger border-4">
-            <div class="card-header bg-danger text-white fw-bold"><i class="bi bi-person-x-fill me-2"></i>Inasistencias Hoy</div>
+        <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
-                {% for inasistencia in inasistencias_hoy %}
-                    <p class="small text-danger fw-bold mb-1 border-bottom pb-1">
-                        {{ inasistencia.usuario.apellido }}, {{ inasistencia.usuario.nombre }}
-                    </p>
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="small text-uppercase text-muted">Registros del día</div>
+                        <div class="display-6 fw-bold text-dark">{{ registros_hoy|length }}</div>
+                    </div>
+                    <div class="rounded-circle bg-primary bg-opacity-10 p-2 text-primary"><i class="bi bi-people-fill"></i></div>
+                </div>
+                <div class="small text-muted mt-3">Total de marcaciones registradas en {{ fecha_hoy.strftime('%d/%m/%Y') }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="small text-uppercase text-muted">A tiempo</div>
+                        <div class="display-6 fw-bold text-success">{{ registros_a_tiempo|length }}</div>
+                    </div>
+                    <div class="rounded-circle bg-success bg-opacity-10 p-2 text-success"><i class="bi bi-check-circle-fill"></i></div>
+                </div>
+                <div class="small text-muted mt-3">Personal con ingreso puntual</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="small text-uppercase text-muted">Con retraso</div>
+                        <div class="display-6 fw-bold text-warning">{{ registros_tarde|length }}</div>
+                    </div>
+                    <div class="rounded-circle bg-warning bg-opacity-10 p-2 text-warning"><i class="bi bi-alarm-fill"></i></div>
+                </div>
+                <div class="small text-muted mt-3">Ingresos fuera del horario oficial</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="small text-uppercase text-muted">Justificaciones</div>
+                        <div class="display-6 fw-bold text-info">{{ solicitudes_pendientes|length }}</div>
+                    </div>
+                    <div class="rounded-circle bg-info bg-opacity-10 p-2 text-info"><i class="bi bi-file-earmark-medical-fill"></i></div>
+                </div>
+                <div class="small text-muted mt-3">Solicitudes pendientes por revisar</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 fade-in-up">
+    <div class="col-md-3">
+        <div class="card shadow-sm mb-4 border-0 border-start border-warning border-4">
+            <div class="card-header bg-warning text-dark fw-bold"><i class="bi bi-file-earmark-medical me-2"></i>Gestión de Justificaciones</div>
+            <div class="card-body">
+                {% for solicitud in solicitudes_pendientes %}
+                    <div class="border rounded-3 p-2 mb-2 bg-light">
+                        <div class="fw-bold small text-dark">{{ solicitud.usuario.apellido }}, {{ solicitud.usuario.nombre }}</div>
+                        <div class="small text-muted">{{ solicitud.motivo or 'Sin motivo registrado' }}</div>
+                        <div class="d-flex gap-2 mt-2">
+                            <form method="POST" action="{{ url_for('aprobar_inasistencia', asistencia_id=solicitud.id) }}" class="d-inline">
+                                <button class="btn btn-success btn-sm">Aprobar</button>
+                            </form>
+                            <form method="POST" action="{{ url_for('rechazar_inasistencia', asistencia_id=solicitud.id) }}" class="d-inline">
+                                <button class="btn btn-outline-danger btn-sm">Rechazar</button>
+                            </form>
+                        </div>
+                    </div>
                 {% else %}
-                    <p class="small text-muted text-center"><i class="bi bi-check-circle me-1 text-success"></i> Sin reportes hoy.</p>
+                    <p class="small text-muted text-center"><i class="bi bi-check-circle me-1 text-success"></i> No hay solicitudes pendientes.</p>
                 {% endfor %}
+                <div class="small text-muted mt-2">
+                    <i class="bi bi-clipboard-check me-1"></i>{{ inasistencias_aprobadas|length }} aprobadas hoy · {{ inasistencias_rechazadas|length }} rechazadas hoy
+                </div>
             </div>
         </div>
 
@@ -55,20 +124,19 @@
         </div>
 
         <div class="card shadow-sm border-0">
-            <div class="card-header bg-info text-white fw-bold">Actividades Externas</div>
+            <div class="card-header bg-info text-white fw-bold">Próximas actividades</div>
             <div class="card-body">
                 {% for e in eventos_externos %}
                     <p class="small text-primary mb-1">
                         <strong>{{ e.fecha_inicio.strftime('%d/%m') }}:</strong> {{ e.titulo }}
                     </p>
                 {% else %}
-                    <p class="small text-muted">Sin actividades externas.</p>
+                    <p class="small text-muted">Sin actividades próximas.</p>
                 {% endfor %}
             </div>
         </div>
     </div>
 
-    <!-- Calendario -->
     <div class="col-md-9">
         <div class="card card-premium shadow-sm p-4 h-100">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -85,7 +153,6 @@
     </div>
 </div>
 
-<!-- Modal Modificación Evento -->
 <div class="modal fade" id="modalModificarEvento" data-bs-backdrop="static" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow" style="border-radius: 16px;">
