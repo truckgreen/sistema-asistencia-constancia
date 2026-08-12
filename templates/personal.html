@@ -72,7 +72,15 @@
                                         </span>
                                     {% elif registro.estado == 'Inasistencia Reportada' %}
                                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 rounded-pill">
-                                            Justificada
+                                            Pendiente
+                                        </span>
+                                    {% elif registro.estado == 'Inasistencia Aprobada' %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill">
+                                            Aprobada
+                                        </span>
+                                    {% elif registro.estado == 'Inasistencia Rechazada' %}
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill">
+                                            Rechazada
                                         </span>
                                     {% elif registro.estado == 'Ausente' %}
                                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill">
@@ -110,18 +118,58 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div id="reader" style="width: 100%;"></div>
+            <div id="qrFeedback" class="mt-3"></div>
 
             <script>
-                function onScanSuccess(decodedText, decodedResult) {
-                    window.location.href = decodedText;
+                let scanLock = false;
+
+                function showQrFeedback(message, type = 'info') {
+                    const box = document.getElementById('qrFeedback');
+                    box.className = `alert alert-${type} py-2 mb-0`;
+                    box.innerHTML = message;
                 }
+
+                function onScanSuccess(decodedText, decodedResult) {
+                    if (scanLock) return;
+                    scanLock = true;
+
+                    showQrFeedback('Procesando registro de asistencia...', 'info');
+                    if (window.html5QrcodeScanner) {
+                        window.html5QrcodeScanner.clear().catch(() => {});
+                    }
+
+                    fetch(decodedText, {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.ok) {
+                            showQrFeedback(`✅ ${data.message} <br><small>Estado: ${data.estado} · ${data.hora}</small>`, 'success');
+                            setTimeout(() => window.location.reload(), 1800);
+                        } else {
+                            if (data.redirect) {
+                                window.location.href = data.redirect;
+                            } else {
+                                showQrFeedback(`⚠️ ${data.message}`, 'warning');
+                            }
+                        }
+                    })
+                    .catch(() => {
+                        showQrFeedback('No se pudo procesar el escaneo. Intenta nuevamente.', 'danger');
+                        scanLock = false;
+                    });
+                }
+
                 let config = { 
                     fps: 10, 
                     qrbox: 250, 
                     videoConstraints: { facingMode: "environment" }
                 };
-                let html5QrcodeScanner = new Html5QrcodeScanner("reader", config);
-                html5QrcodeScanner.render(onScanSuccess);
+                window.html5QrcodeScanner = new Html5QrcodeScanner("reader", config);
+                window.html5QrcodeScanner.render(onScanSuccess);
             </script>
         </div>
     </div>

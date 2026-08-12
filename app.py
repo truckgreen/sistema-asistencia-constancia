@@ -3,7 +3,7 @@ import socket
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from werkzeug.utils import secure_filename
 from models import db, Usuario, Evento, AsistenciaDiaria, Configuracion
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import extract
 import secrets
 import string
@@ -176,10 +176,19 @@ def reporte_asistencia():
     if usuario_id_filtro and usuario_id_filtro != 'todos':
         query = query.filter(Usuario.id == usuario_id_filtro)
     if tipo_registro == 'inasistencias':
-        # Buscamos tanto 'Ausente' como 'Inasistencia Reportada'
-        query = query.filter(AsistenciaDiaria.estado.in_(['Ausente', 'Inasistencia Reportada']))
+        query = query.filter(AsistenciaDiaria.estado.in_([
+            'Ausente',
+            'Inasistencia Reportada',
+            'Inasistencia Aprobada',
+            'Inasistencia Rechazada'
+        ]))
     elif tipo_registro == 'asistencias':
-        query = query.filter(AsistenciaDiaria.estado.notin_(['Ausente', 'Inasistencia Reportada']))
+        query = query.filter(AsistenciaDiaria.estado.notin_([
+            'Ausente',
+            'Inasistencia Reportada',
+            'Inasistencia Aprobada',
+            'Inasistencia Rechazada'
+        ]))
     
     if fecha_inicio:
         query = query.filter(AsistenciaDiaria.fecha >= datetime.strptime(fecha_inicio, '%Y-%m-%d').date())
@@ -203,37 +212,49 @@ def reporte_asistencia():
 
 @app.route('/directivo')
 def dashboard_directivo():
-    """Panel principal del directivo: muestra cumpleaños, eventos y personal."""
+    """Panel principal del directivo: muestra resumen operativo del día y gestión de justificaciones."""
     if session.get('rol') != 'directivo':
         return redirect(url_for('login'))
+
     hoy = datetime.now()
-    
+    fecha_hoy = hoy.date()
+
+    registros_hoy = AsistenciaDiaria.query.filter_by(fecha=fecha_hoy).all()
+    registros_a_tiempo = [r for r in registros_hoy if r.estado == 'A tiempo']
+    registros_tarde = [r for r in registros_hoy if r.estado == 'Tarde']
+    solicitudes_pendientes = [r for r in registros_hoy if r.estado == 'Inasistencia Reportada']
+    inasistencias_aprobadas = [r for r in registros_hoy if r.estado == 'Inasistencia Aprobada']
+    inasistencias_rechazadas = [r for r in registros_hoy if r.estado == 'Inasistencia Rechazada']
+
     # Selecciona los usuarios con cumpleaños en la fecha actual.
     cumpleaneros = Usuario.query.filter(
         extract('month', Usuario.fecha_nacimiento) == hoy.month,
         extract('day', Usuario.fecha_nacimiento) == hoy.day
     ).all()
-    
-    # Reporta las inasistencias justificadas del día.
-    inasistencias_hoy = AsistenciaDiaria.query.filter_by(
-        fecha=hoy.date(),
-        estado='Inasistencia Reportada'
-    ).all()
-    
-    # Filtro: eventos del día actual
+
+    # Eventos relevantes del día y próximos 7 días.
+    inicio_semana = datetime.combine(fecha_hoy, datetime.min.time())
+    fin_semana = inicio_semana + timedelta(days=7)
     eventos_externos = Evento.query.filter(
         Evento.tipo != 'clase',
-        extract('year', Evento.fecha_inicio) == hoy.year,
-        extract('month', Evento.fecha_inicio) == hoy.month,
-        extract('day', Evento.fecha_inicio) == hoy.day
-    ).all()
-    
+        Evento.fecha_inicio >= inicio_semana,
+        Evento.fecha_inicio < fin_semana
+    ).order_by(Evento.fecha_inicio.asc()).all()
+
     profesores = Usuario.query.filter_by(rol='personal').all()
-    return render_template('director.html', 
-                           profesores=profesores, 
-                           cumpleaneros=cumpleaneros, 
-                           eventos_externos=eventos_externos,
-                           inasistencias_hoy=inasistencias_hoy)
+    return render_template(
+        'director.html',
+        profesores=profesores,
+        cumpleaneros=cumpleaneros,
+        eventos_externos=eventos_externos,
+        registros_hoy=registros_hoy,
+        registros_a_tiempo=registros_a_tiempo,
+        registros_tarde=registros_tarde,
+        solicitudes_pendientes=solicitudes_pendientes,
+        inasistencias_aprobadas=inasistencias_aprobadas,
+        inasistencias_rechazadas=inasistencias_rechazadas,
+        fecha_hoy=fecha_hoy
+    )
 
 @app.route('/directivo/planificacion')
 def directivo_planificacion():
@@ -405,46 +426,55 @@ def generar_qr():
 
 @app.route('/asistencia/registrar', methods=['GET'])
 def registrar_asistencia():
-    """Evalúa la puntualidad, registra y redirige automáticamente al panel."""
-    
+    """Evalúa la puntualidad, registra y devuelve una respuesta útil tanto para navegación como para AJAX."""
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
     # 1. Si no hay sesión, redirige al login preservando la ruta original.
     if not session.get('usuario_id'):
-        flash('Inicie sesión en su teléfono para escanear el QR.', 'warning')
+        message = 'Inicie sesión en su teléfono para escanear el QR.'
+        if is_ajax:
+            return jsonify({'ok': False, 'message': message, 'redirect': url_for('login', next=request.path)})
+        flash(message, 'warning')
         return redirect(url_for('login', next=request.path))
 
     usuario_id = session['usuario_id']
     fecha_hoy = datetime.now().date()
-    
+
     # 2. Si la asistencia ya fue registrada hoy, no permite duplicados.
     existe = AsistenciaDiaria.query.filter_by(usuario_id=usuario_id, fecha=fecha_hoy).first()
     if existe:
-        flash('Ya habías registrado tu asistencia el día de hoy.', 'info')
+        message = 'Ya habías registrado tu asistencia el día de hoy.'
+        if is_ajax:
+            return jsonify({'ok': False, 'message': message, 'already_registered': True})
+        flash(message, 'info')
         return redirect(url_for('dashboard_personal'))
-        
+
     # 3. Determina el estado de puntualidad a partir de la configuración actual.
     hora_actual = datetime.now().time()
     config = Configuracion.query.first()
     hora_limite = datetime.strptime(config.hora_entrada_oficial, "%H:%M").time()
     estado = "A tiempo" if hora_actual <= hora_limite else "Tarde"
-    
+
     nueva_asistencia = AsistenciaDiaria(
         usuario_id=usuario_id, fecha=fecha_hoy, hora_registro=datetime.now(), estado=estado
     )
     db.session.add(nueva_asistencia)
     db.session.commit()
-    
-    # 4. Mensaje de éxito y redirección automática al panel del usuario.
+
+    # 4. Para peticiones AJAX, devolvemos JSON; para navegación directa, seguimos mostrando la página de confirmación.
     icono = "✅" if estado == "A tiempo" else "⚠️"
     color_texto = "#198754" if estado == "A tiempo" else "#ffc107"
     hora_str = datetime.now().strftime('%I:%M %p')
-    
+
+    if is_ajax:
+        return jsonify({'ok': True, 'message': 'Asistencia registrada correctamente.', 'estado': estado, 'hora': hora_str})
+
     return f"""
     <!DOCTYPE html>
     <html lang="es">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <!-- AQUÍ ESTÁ EL TRUCO: Espera 3 segundos y redirige a /personal -->
         <meta http-equiv="refresh" content="3;url=/personal" />
         <title>Asistencia Registrada</title>
     </head>
@@ -543,6 +573,30 @@ def modificar_evento():
     return redirect(url_for('dashboard_directivo'))
 
 # --- Sesión ---
+
+@app.route('/directivo/inasistencia/<int:asistencia_id>/aprobar', methods=['POST'])
+def aprobar_inasistencia(asistencia_id):
+    """Aprueba una justificación de inasistencia desde la consola directiva."""
+    if session.get('rol') != 'directivo':
+        return redirect(url_for('login'))
+
+    registro = AsistenciaDiaria.query.get_or_404(asistencia_id)
+    registro.estado = 'Inasistencia Aprobada'
+    db.session.commit()
+    flash('La justificación fue aprobada correctamente.', 'success')
+    return redirect(request.referrer or url_for('dashboard_directivo'))
+
+@app.route('/directivo/inasistencia/<int:asistencia_id>/rechazar', methods=['POST'])
+def rechazar_inasistencia(asistencia_id):
+    """Rechaza una justificación de inasistencia desde la consola directiva."""
+    if session.get('rol') != 'directivo':
+        return redirect(url_for('login'))
+
+    registro = AsistenciaDiaria.query.get_or_404(asistencia_id)
+    registro.estado = 'Inasistencia Rechazada'
+    db.session.commit()
+    flash('La justificación fue rechazada.', 'warning')
+    return redirect(request.referrer or url_for('dashboard_directivo'))
 
 @app.route('/logout')
 def logout():
