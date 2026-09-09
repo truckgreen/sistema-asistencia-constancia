@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Horarios escolares - {{ docente.nombre }} {{ docente.apellido }}</title>
+    <style>
+        :root { --ink: #173744; --orange: #f58b25; --line: #75421c; --recess: #fffca8; }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 24px; color: var(--ink); font-family: Georgia, 'Times New Roman', serif; background: #eef2f1; }
+        .page { max-width: 1120px; margin: auto; padding: 28px 32px 34px; background: #fff; border: 3px dashed #276475; border-radius: 22px; }
+        .top { display: grid; grid-template-columns: 1fr 2fr 1fr; align-items: center; gap: 18px; margin-bottom: 12px; }
+        .brand { font-size: 0.82rem; font-weight: 700; color: #246274; text-transform: uppercase; }
+        .brand span { display: block; font-size: 1.05rem; color: #b06a23; text-transform: none; }
+        h1 { margin: 0; text-align: center; font-size: clamp(1.6rem, 3vw, 2.7rem); line-height: 1.05; font-style: italic; text-transform: uppercase; }
+        .teacher { padding: 10px 14px; border: 2px solid #555; border-radius: 7px; text-align: center; font-size: 1.05rem; }
+        .teacher strong { display: block; margin-top: 5px; font-size: 1.15rem; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 3px solid var(--line); }
+        th, td { border: 2px solid var(--line); text-align: center; padding: 9px 5px; height: 45px; }
+        thead th { background: var(--orange); color: #24170c; font-weight: 700; text-transform: uppercase; }
+        th.number, td.number { width: 50px; }
+        th.time, td.time { width: 130px; white-space: nowrap; font-size: 0.9rem; }
+        td.number { font-weight: 700; }
+        td.subject { font-size: 0.88rem; }
+        td.subject small { display: block; margin-top: 4px; color: #775d48; }
+        .entry, .exit { background: #ffd29f; font-weight: 700; font-size: 1.08rem; }
+        .recess { background: var(--recess); font-weight: 700; letter-spacing: .05em; }
+        .note-title { margin: 18px 0 5px; font-weight: 700; text-transform: uppercase; text-decoration: underline; }
+        .note { min-height: 60px; padding: 13px 16px; border-radius: 13px; background: #ffd83d; border: 1px solid #d0a400; font-family: Arial, sans-serif; font-size: .86rem; }
+        .actions { max-width: 1120px; margin: 0 auto 14px; display: flex; justify-content: flex-end; gap: 8px; }
+        button, a { border: 1px solid #276475; border-radius: 6px; padding: 8px 13px; background: #276475; color: #fff; text-decoration: none; cursor: pointer; }
+        a { background: #fff; color: #276475; }
+        .empty { padding: 30px; text-align: center; border: 2px dashed #b9c4c7; }
+        .school-schedule { break-after: page; page-break-after: always; }
+        .school-schedule:last-child { break-after: auto; page-break-after: auto; }
+        @media (max-width: 760px) { body { padding: 8px; } .page { padding: 16px 8px; border-radius: 12px; } .top { grid-template-columns: 1fr; } h1 { order: -1; } .teacher { max-width: 260px; margin: auto; } table { min-width: 760px; } .table-wrap { overflow-x: auto; } }
+        @media print { body { padding: 0; background: #fff; } .page { max-width: none; border: 0; padding: 0; } .actions { display: none; } @page { size: landscape; margin: 10mm; } }
+    </style>
+</head>
+<body>
+    <div class="actions"><a href="{{ url_for('horarios.gestionar_horarios', usuario_id=docente.id) }}">Volver</a><button onclick="window.print()">Imprimir / Guardar PDF</button></div>
+    <main class="page">
+        {% for horario in horarios %}
+        <header class="top">
+            <div class="brand">Institución Educativa<span>Sistema de Asistencia</span></div>
+            <h1>Horario escolar<br>{{ horario.curso }}</h1>
+            <div class="teacher">Prof.<strong>{{ docente.nombre }} {{ docente.apellido }}</strong></div>
+        </header>
+        <section class="school-schedule">
+        {% if horario.bloques %}
+        <div class="table-wrap"><table>
+            <thead><tr><th class="number">N°</th><th class="time">HORA</th><th>LUNES</th><th>MARTES</th><th>MIÉRCOLES</th><th>JUEVES</th><th>VIERNES</th></tr></thead>
+            <tbody>
+            <tr><td colspan="2" class="entry">Ingreso</td><td colspan="5" class="entry">{{ horario.bloques[0][0] }}</td></tr>
+            {% for bloque in horario.bloques %}
+            {% set bloque_receso = (horario.clases|selectattr('hora_inicio', 'equalto', bloque[0])|selectattr('hora_fin', 'equalto', bloque[1])|selectattr('tipo', 'equalto', 'receso')|list|length) > 0 %}
+            {% if bloque_receso %}
+            <tr><td colspan="2" class="time recess">{{ bloque[0] }} - {{ bloque[1] }}</td><td colspan="5" class="recess">RECREO</td></tr>
+            {% else %}
+            <tr><td class="number">{{ loop.index }}°</td><td class="time">{{ bloque[0] }} - {{ bloque[1] }}</td>{% for dia in range(5) %}{% set clase = horario.clases|selectattr('dia_semana', 'equalto', dia)|selectattr('hora_inicio', 'equalto', bloque[0])|selectattr('hora_fin', 'equalto', bloque[1])|first %}<td class="subject">{% if clase %}{{ clase.nombre }}{% if clase.aula %}<small>{{ clase.aula }}</small>{% endif %}{% else %}&nbsp;{% endif %}</td>{% endfor %}</tr>
+            {% endif %}
+            {% endfor %}
+            <tr><td colspan="2" class="exit">Salida</td><td colspan="5" class="exit">{{ horario.bloques[-1][1] }}</td></tr>
+            </tbody>
+        </table></div>
+        {% else %}<div class="empty">Este curso todavía no tiene clases asignadas.</div>{% endif %}
+        <div class="note-title">Nota:</div><div class="note">Se pide puntualidad respetando los horarios de ingreso y salida. Este horario puede imprimirse o guardarse como PDF.</div>
+        </section>
+        {% else %}
+        <div class="empty">Este docente todavía no tiene clases asignadas. Regresa y agrega materias para generar los horarios.</div>
+        {% endfor %}
+    </main>
+</body>
+</html>

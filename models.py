@@ -23,12 +23,15 @@ class Usuario(db.Model):
     hora_salida = db.Column(db.String(5), default='15:30')
     limite_permisos = db.Column(db.Integer, default=3)
     
-    rol = db.Column(db.String(30), nullable=False) 
+    rol = db.Column(db.String(30), nullable=False)
+    departamento = db.Column(db.String(80))
 
     # Relación con asistencias: elimina los registros asociados cuando se borra el usuario.
     asistencias = db.relationship('AsistenciaDiaria', backref='usuario', cascade="all, delete-orphan")
     horarios = db.relationship('HorarioPersonal', backref='usuario', cascade="all, delete-orphan")
+    asignaciones_horario = db.relationship('AsignacionHorario', backref='usuario', cascade="all, delete-orphan")
     permisos = db.relationship('Permiso', backref='usuario', cascade="all, delete-orphan")
+    clases_horario = db.relationship('ClaseHorario', backref='docente', cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -101,6 +104,58 @@ class HorarioPersonal(db.Model):
     dia_semana = db.Column(db.Integer, nullable=False)  # Lunes=0 ... Domingo=6
     hora_entrada = db.Column(db.String(5), nullable=False)
     hora_salida = db.Column(db.String(5), nullable=False)
+
+
+class PlantillaHorario(db.Model):
+    """Plantilla reutilizable con la jornada semanal de un grupo de personas."""
+    __tablename__ = 'plantillas_horario'
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), nullable=False, unique=True)
+    descripcion = db.Column(db.String(255))
+    activa = db.Column(db.Boolean, default=True, nullable=False)
+    detalles = db.relationship('DetallePlantillaHorario', backref='plantilla',
+                               cascade='all, delete-orphan', order_by='DetallePlantillaHorario.dia_semana')
+    asignaciones = db.relationship('AsignacionHorario', backref='plantilla',
+                                   cascade='all, delete-orphan')
+
+
+class DetallePlantillaHorario(db.Model):
+    """Horario de entrada y salida de una plantilla para un día concreto."""
+    __tablename__ = 'detalles_plantilla_horario'
+    id = db.Column(db.Integer, primary_key=True)
+    plantilla_id = db.Column(db.Integer, db.ForeignKey('plantillas_horario.id'), nullable=False)
+    dia_semana = db.Column(db.Integer, nullable=False)
+    hora_entrada = db.Column(db.String(5), nullable=False)
+    hora_salida = db.Column(db.String(5), nullable=False)
+    __table_args__ = (db.UniqueConstraint('plantilla_id', 'dia_semana', name='uq_plantilla_dia'),)
+
+
+class AsignacionHorario(db.Model):
+    """Vigencia de una plantilla para un empleado, rol o departamento."""
+    __tablename__ = 'asignaciones_horario'
+    id = db.Column(db.Integer, primary_key=True)
+    plantilla_id = db.Column(db.Integer, db.ForeignKey('plantillas_horario.id'), nullable=False)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True)
+    rol = db.Column(db.String(30))
+    departamento = db.Column(db.String(80))
+    fecha_inicio = db.Column(db.Date, nullable=False)
+    fecha_fin = db.Column(db.Date, nullable=True)
+    prioridad = db.Column(db.Integer, default=0, nullable=False)
+    creada_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class ClaseHorario(db.Model):
+    """Clase recurrente de la jornada semanal de un docente."""
+    __tablename__ = 'clases_horario'
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
+    curso = db.Column(db.String(80))
+    nombre = db.Column(db.String(120), nullable=False)
+    tipo = db.Column(db.String(20), default='clase', nullable=False)
+    dia_semana = db.Column(db.Integer, nullable=False)
+    hora_inicio = db.Column(db.String(5), nullable=False)
+    hora_fin = db.Column(db.String(5), nullable=False)
+    aula = db.Column(db.String(80))
 
 
 class Permiso(db.Model):

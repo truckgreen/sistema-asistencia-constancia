@@ -2,21 +2,21 @@ import os
 import socket
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from werkzeug.utils import secure_filename
-<<<<<<< HEAD
-from models import db, Usuario, Evento, AsistenciaDiaria, Configuracion
-from datetime import datetime, timedelta
-from sqlalchemy import extract
-=======
-from models import db, Usuario, Evento, AsistenciaDiaria, Configuracion, HorarioPersonal, Permiso
+from models import (db, Usuario, Evento, AsistenciaDiaria, Configuracion,
+                     HorarioPersonal, Permiso, AsignacionHorario)
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from sqlalchemy import extract, inspect, text
->>>>>>> 441bf2c (nose que ahi aqui)
 import secrets
 import string
 import qrcode
 import io
 import base64
+from routes.horarios import horarios_bp
+from routes.auth import auth_bp
+from routes.directivo import directivo_bp
+from routes.personal import personal_bp
+from routes.api import api_bp
 
 # --- Configuración de la Aplicación ---
 app = Flask(__name__)
@@ -39,6 +39,11 @@ except Exception:
 
 # Inicialización de la base de datos con la aplicación Flask
 db.init_app(app)
+app.register_blueprint(horarios_bp)
+app.register_blueprint(auth_bp)
+app.register_blueprint(directivo_bp)
+app.register_blueprint(personal_bp)
+app.register_blueprint(api_bp)
 
 def ahora_venezuela():
     """Devuelve la hora oficial de la institución, independientemente del servidor."""
@@ -51,15 +56,39 @@ def horario_de_usuario(usuario, fecha, config=None):
     horario = HorarioPersonal.query.filter_by(usuario_id=usuario.id, dia_semana=fecha.weekday()).first()
     if horario:
         return horario.hora_entrada, horario.hora_salida
+
+    asignaciones = AsignacionHorario.query.filter(
+        AsignacionHorario.fecha_inicio <= fecha,
+        (AsignacionHorario.fecha_fin.is_(None) | (AsignacionHorario.fecha_fin >= fecha)),
+        ((AsignacionHorario.usuario_id == usuario.id) |
+         (AsignacionHorario.usuario_id.is_(None) &
+          ((AsignacionHorario.departamento == usuario.departamento) |
+           (AsignacionHorario.rol == usuario.rol))))
+    ).all()
+    asignaciones.sort(key=lambda asignacion: (
+        3 if asignacion.usuario_id == usuario.id else
+        2 if asignacion.departamento and asignacion.departamento == usuario.departamento else
+        1,
+        asignacion.prioridad,
+        asignacion.fecha_inicio
+    ), reverse=True)
+    asignaciones = [asignacion for asignacion in asignaciones if asignacion.plantilla.activa]
+    if asignaciones:
+        detalle = next((detalle for detalle in asignaciones[0].plantilla.detalles
+                        if detalle.dia_semana == fecha.weekday()), None)
+        if detalle:
+            return detalle.hora_entrada, detalle.hora_salida
+
     return usuario.hora_entrada or (config.hora_entrada_oficial if config else '07:30'), usuario.hora_salida or '15:30'
 
 def actualizar_esquema_existente():
     """Agrega columnas nuevas a instalaciones SQLite creadas con una versión anterior."""
     inspector = inspect(db.engine)
     cambios = {
-        'usuarios': [('hora_entrada', "VARCHAR(5) DEFAULT '07:30'"), ('hora_salida', "VARCHAR(5) DEFAULT '15:30'"), ('limite_permisos', 'INTEGER DEFAULT 3')],
+        'usuarios': [('hora_entrada', "VARCHAR(5) DEFAULT '07:30'"), ('hora_salida', "VARCHAR(5) DEFAULT '15:30'"), ('limite_permisos', 'INTEGER DEFAULT 3'), ('departamento', 'VARCHAR(80)')],
         'asistencias_diarias': [('minutos_retraso', 'INTEGER DEFAULT 0'), ('registrada_manualmente', 'BOOLEAN DEFAULT 0')],
-        'configuracion': [('dias_laborables', "VARCHAR(20) DEFAULT '0,1,2,3,4'"), ('limite_permisos', 'INTEGER DEFAULT 3')]
+        'configuracion': [('dias_laborables', "VARCHAR(20) DEFAULT '0,1,2,3,4'"), ('limite_permisos', 'INTEGER DEFAULT 3')],
+        'clases_horario': [('curso', 'VARCHAR(80)'), ('tipo', "VARCHAR(20) DEFAULT 'clase'")]
     }
     for tabla, columnas in cambios.items():
         existentes = {columna['name'] for columna in inspector.get_columns(tabla)}
@@ -383,6 +412,7 @@ def crear_usuario():
     apellido = request.form['apellido']
     correo = request.form['correo']
     rol = request.form['rol']
+    departamento = request.form.get('departamento', '').strip() or None
     telefono = request.form.get('telefono')
     fecha_nac = request.form.get('fecha_nacimiento')
     hora_entrada = request.form.get('hora_entrada') or '07:30'
@@ -414,6 +444,7 @@ def crear_usuario():
         nombre=nombre, apellido=apellido, correo=correo, rol=rol,
         telefono=telefono,
         fecha_nacimiento=fecha_nacimiento,
+        departamento=departamento,
         hora_entrada=hora_entrada,
         hora_salida=hora_salida
     )
@@ -432,6 +463,7 @@ def editar_usuario(id):
     usuario.nombre = request.form['nombre']
     usuario.apellido = request.form['apellido']
     usuario.rol = request.form['rol']
+    usuario.departamento = request.form.get('departamento', '').strip() or None
     usuario.telefono = request.form.get('telefono')
     usuario.hora_entrada = request.form.get('hora_entrada') or usuario.hora_entrada
     usuario.hora_salida = request.form.get('hora_salida') or usuario.hora_salida

@@ -223,6 +223,83 @@ body::before {
     line-height: 1.5;
 }
 
+.schedule-editor thead th {
+    background: rgba(12, 85, 40, 0.08);
+    color: var(--primary);
+}
+
+.schedule-editor tbody tr {
+    background: transparent;
+}
+
+.schedule-editor tbody tr:hover {
+    transform: none;
+    background: rgba(12, 85, 40, 0.04);
+}
+
+.schedule-preview {
+    padding: 1rem;
+    border: 1px solid rgba(12, 85, 40, 0.12);
+    border-radius: 1rem;
+    background: #fbfdfb;
+}
+
+.schedule-grid {
+    display: grid;
+    grid-template-columns: 3.7rem repeat(7, minmax(2.2rem, 1fr));
+    gap: 3px;
+}
+
+.schedule-corner,
+.schedule-day,
+.schedule-hour,
+.schedule-cell {
+    min-height: 2rem;
+    border-radius: 4px;
+}
+
+.schedule-day {
+    display: grid;
+    place-items: center;
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.schedule-hour {
+    display: grid;
+    place-items: center;
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    background: rgba(15, 23, 42, 0.05);
+}
+
+.schedule-cell {
+    border: 1px solid rgba(12, 85, 40, 0.12);
+    background: #fff;
+}
+
+.schedule-cell.is-active {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.empty-schedule {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 1rem;
+    border: 1px dashed rgba(12, 85, 40, 0.25);
+    border-radius: 0.85rem;
+    color: var(--text-muted);
+}
+
+.empty-schedule i {
+    color: var(--accent);
+    font-size: 1.35rem;
+}
+
 .bg-panel {
     background: var(--surface-soft);
     border: 1px solid rgba(15, 23, 42, 0.08);

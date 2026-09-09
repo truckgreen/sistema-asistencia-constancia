@@ -32,33 +32,33 @@
                 <ul class="navbar-nav mx-auto mb-2 mb-lg-0 gap-2">
                     <li class="nav-item">
                         <a class="nav-link px-3 {% if request.endpoint == 'dashboard_directivo' and not request.args.get('tipo_registro') %}text-warning fw-bold{% endif %}" href="{{ url_for('dashboard_directivo') }}">
-                            <i class="bi bi-calendar3 me-1"></i> Visor de Horarios
+                            <i class="bi bi-speedometer2 me-1"></i> Resumen
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link px-3 {% if request.endpoint == 'directivo_planificacion' %}text-warning fw-bold{% endif %}" href="{{ url_for('directivo_planificacion') }}">
-                            <i class="bi bi-calendar-plus me-1"></i> Planificación
-                        </a>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle px-3" href="#" data-bs-toggle="dropdown"><i class="bi bi-calendar2-week me-1"></i> Organización</a>
+                        <ul class="dropdown-menu shadow border-0">
+                            <li><a class="dropdown-item" href="{{ url_for('horarios.gestionar_horarios') }}"><i class="bi bi-clock-history me-2 text-success"></i>Horarios por persona</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('directivo_planificacion') }}"><i class="bi bi-calendar-plus me-2 text-primary"></i>Planificación</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('directivo_usuarios') }}"><i class="bi bi-people me-2 text-primary"></i>Personal y departamentos</a></li>
+                        </ul>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link px-3 {% if request.endpoint == 'directivo_usuarios' %}text-warning fw-bold{% endif %}" href="{{ url_for('directivo_usuarios') }}">
-                            <i class="bi bi-people me-1"></i> Gestión de Personal
-                        </a>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle px-3" href="#" data-bs-toggle="dropdown"><i class="bi bi-clipboard2-check me-1"></i> Control</a>
+                        <ul class="dropdown-menu shadow border-0">
+                            <li><a class="dropdown-item" href="{{ url_for('reporte_asistencia') }}?tipo_registro=asistencias"><i class="bi bi-check-circle me-2 text-success"></i>Asistencias</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('directivo.solicitudes') }}"><i class="bi bi-inbox me-2 text-warning"></i>Justificaciones y permisos</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('reporte_asistencia') }}?tipo_registro=inasistencias"><i class="bi bi-file-earmark-medical me-2 text-warning"></i>Libro de inasistencias</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('reporte_asistencia') }}"><i class="bi bi-file-earmark-spreadsheet me-2 text-primary"></i>Libro completo</a></li>
+                        </ul>
                     </li>
-                    <!-- NUEVA OPCIÓN CORREGIDA: Sin fondo blanco, integrado perfectamente -->
-                    <li class="nav-item">
-                        <a class="nav-link px-3 {% if request.args.get('tipo_registro') == 'inasistencias' %}text-warning fw-bold{% endif %}" href="{{ url_for('reporte_asistencia') }}?tipo_registro=inasistencias">
-                            <i class="bi bi-file-earmark-medical text-warning me-1"></i> Justificaciones
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link px-3 {% if request.endpoint == 'directivo_configuracion' %}text-warning fw-bold{% endif %}" href="{{ url_for('directivo_configuracion') }}">
-                            <i class="bi bi-gear me-1"></i> Parámetros
-                        </a>
-                    </li>
+                    <li class="nav-item"><a class="nav-link px-3" href="{{ url_for('directivo_configuracion') }}"><i class="bi bi-gear me-1"></i> Parámetros</a></li>
                 </ul>
                 {% else %}
-                <div class="mx-auto"></div>
+                <ul class="navbar-nav mx-auto mb-2 mb-lg-0 gap-2">
+                    <li class="nav-item"><a class="nav-link px-3" href="{{ url_for('dashboard_personal') }}"><i class="bi bi-person-check me-1"></i>Mi asistencia</a></li>
+                    <li class="nav-item"><a class="nav-link px-3" href="{{ url_for('personal.mi_horario') }}"><i class="bi bi-calendar2-week me-1"></i>Mis clases y horario</a></li>
+                </ul>
                 {% endif %}
                 
                 <div class="d-flex align-items-center mt-3 mt-lg-0">
