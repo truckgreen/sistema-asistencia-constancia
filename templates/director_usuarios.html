@@ -62,6 +62,10 @@
                         <option value="obrero">Personal Obrero / Operativo</option>
                     </select>
                 </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6"><label class="form-label small fw-semibold text-muted">Entrada</label><input type="time" name="hora_entrada" class="form-control form-control-sm" value="07:30" required></div>
+                    <div class="col-6"><label class="form-label small fw-semibold text-muted">Salida</label><input type="time" name="hora_salida" class="form-control form-control-sm" value="15:30" required></div>
+                </div>
                 <button type="submit" class="btn btn-success btn-sm w-100 fw-bold py-2 shadow-sm" style="border-radius: 8px;">
                     Registrar y Generar Credenciales
                 </button>
@@ -106,7 +110,9 @@
                                         data-nombre="{{ p.nombre }}" 
                                         data-apellido="{{ p.apellido }}"
                                         data-telefono="{{ p.telefono }}" 
-                                        data-rol="{{ p.rol }}">
+                                        data-rol="{{ p.rol }}"
+                                        data-hora-entrada="{{ p.hora_entrada or '07:30' }}"
+                                        data-hora-salida="{{ p.hora_salida or '15:30' }}">
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 
@@ -138,6 +144,7 @@
             <label class="form-label text-muted">Nombre</label>
             <input type="text" class="form-control rounded-3" name="nombre" id="editNombre" required>
           </div>
+          <div class="row g-2 mb-3"><div class="col"><label class="form-label text-muted">Entrada</label><input type="time" class="form-control" name="hora_entrada" id="editHoraEntrada"></div><div class="col"><label class="form-label text-muted">Salida</label><input type="time" class="form-control" name="hora_salida" id="editHoraSalida"></div></div>
           <div class="mb-3">
             <label class="form-label text-muted">Apellido</label>
             <input type="text" class="form-control rounded-3" name="apellido" id="editApellido" required>
@@ -178,6 +185,8 @@
     document.getElementById('editTelefono').value = telefonoValue !== 'None' ? telefonoValue : '';
     
     document.getElementById('editRol').value = button.getAttribute('data-rol');
+        document.getElementById('editHoraEntrada').value = button.getAttribute('data-hora-entrada');
+        document.getElementById('editHoraSalida').value = button.getAttribute('data-hora-salida');
   });
 </script>
 {% endblock %}

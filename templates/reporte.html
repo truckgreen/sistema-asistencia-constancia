@@ -76,6 +76,7 @@
                         <th class="ps-4 py-3">Fecha de Jornada</th>
                         <th class="py-3">Funcionario / Empleado</th>
                         <th class="py-3">Estampado de Tiempo</th>
+                        <th class="py-3">Retraso</th>
                         <th class="pe-4 py-3 text-end">Estatus Operativo</th>
                     </tr>
                 </thead>
@@ -91,6 +92,7 @@
                             <i class="bi bi-clock me-1 text-muted"></i> 
                             {{ registro.hora_registro.strftime('%I:%M:%S %p') }}
                         </td>
+                        <td>{% if registro.minutos_retraso %}<span class="text-warning">{{ registro.minutos_retraso }} min</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
                         <td class="pe-4 text-end">
                             {% if registro.estado == 'A tiempo' %}
                                 <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill">

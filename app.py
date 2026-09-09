@@ -2,9 +2,16 @@ import os
 import socket
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 from werkzeug.utils import secure_filename
+<<<<<<< HEAD
 from models import db, Usuario, Evento, AsistenciaDiaria, Configuracion
 from datetime import datetime, timedelta
 from sqlalchemy import extract
+=======
+from models import db, Usuario, Evento, AsistenciaDiaria, Configuracion, HorarioPersonal, Permiso
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+from sqlalchemy import extract, inspect, text
+>>>>>>> 441bf2c (nose que ahi aqui)
 import secrets
 import string
 import qrcode
@@ -24,9 +31,42 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB máximo para adjuntos
+try:
+    ZONA_HORARIA = ZoneInfo('America/Caracas')
+except Exception:
+    # Venezuela mantiene UTC-4 y no aplica horario de verano.
+    ZONA_HORARIA = timezone(timedelta(hours=-4))
 
 # Inicialización de la base de datos con la aplicación Flask
 db.init_app(app)
+
+def ahora_venezuela():
+    """Devuelve la hora oficial de la institución, independientemente del servidor."""
+    return datetime.now(ZONA_HORARIA).replace(tzinfo=None)
+
+def dias_laborables(config):
+    return {int(dia) for dia in (config.dias_laborables or '0,1,2,3,4').split(',') if dia.strip().isdigit()}
+
+def horario_de_usuario(usuario, fecha, config=None):
+    horario = HorarioPersonal.query.filter_by(usuario_id=usuario.id, dia_semana=fecha.weekday()).first()
+    if horario:
+        return horario.hora_entrada, horario.hora_salida
+    return usuario.hora_entrada or (config.hora_entrada_oficial if config else '07:30'), usuario.hora_salida or '15:30'
+
+def actualizar_esquema_existente():
+    """Agrega columnas nuevas a instalaciones SQLite creadas con una versión anterior."""
+    inspector = inspect(db.engine)
+    cambios = {
+        'usuarios': [('hora_entrada', "VARCHAR(5) DEFAULT '07:30'"), ('hora_salida', "VARCHAR(5) DEFAULT '15:30'"), ('limite_permisos', 'INTEGER DEFAULT 3')],
+        'asistencias_diarias': [('minutos_retraso', 'INTEGER DEFAULT 0'), ('registrada_manualmente', 'BOOLEAN DEFAULT 0')],
+        'configuracion': [('dias_laborables', "VARCHAR(20) DEFAULT '0,1,2,3,4'"), ('limite_permisos', 'INTEGER DEFAULT 3')]
+    }
+    for tabla, columnas in cambios.items():
+        existentes = {columna['name'] for columna in inspector.get_columns(tabla)}
+        for nombre, definicion in columnas:
+            if nombre not in existentes:
+                db.session.execute(text(f'ALTER TABLE {tabla} ADD COLUMN {nombre} {definicion}'))
+    db.session.commit()
 
 # --- Funciones de Utilidad ---
 
@@ -117,12 +157,13 @@ def cargar_efemerides_iniciales():
 with app.app_context():
     # Crea las tablas en la base de datos si aún no existen.
     db.create_all()
+    actualizar_esquema_existente()
     # Inserta el calendario de efemérides institucionales si no existen registros.
     cargar_efemerides_iniciales()
     
     # Asegura que exista una configuración global para la hora de entrada.
     if not Configuracion.query.first():
-        db.session.add(Configuracion(hora_entrada_oficial="07:30"))
+        db.session.add(Configuracion(hora_entrada_oficial="07:30", dias_laborables='0,1,2,3,4', limite_permisos=3))
         
     # Crea un usuario directivo por defecto cuando la aplicación se instala por primera vez.
     if not Usuario.query.filter_by(correo='director@institucion.edu').first():
@@ -216,13 +257,21 @@ def dashboard_directivo():
     if session.get('rol') != 'directivo':
         return redirect(url_for('login'))
 
+<<<<<<< HEAD
     hoy = datetime.now()
+=======
+    hoy = ahora_venezuela()
+>>>>>>> 441bf2c (nose que ahi aqui)
     fecha_hoy = hoy.date()
 
     registros_hoy = AsistenciaDiaria.query.filter_by(fecha=fecha_hoy).all()
     registros_a_tiempo = [r for r in registros_hoy if r.estado == 'A tiempo']
     registros_tarde = [r for r in registros_hoy if r.estado == 'Tarde']
     solicitudes_pendientes = [r for r in registros_hoy if r.estado == 'Inasistencia Reportada']
+<<<<<<< HEAD
+=======
+    permisos_pendientes = Permiso.query.filter_by(estado='Pendiente').order_by(Permiso.fecha_inicio).all()
+>>>>>>> 441bf2c (nose que ahi aqui)
     inasistencias_aprobadas = [r for r in registros_hoy if r.estado == 'Inasistencia Aprobada']
     inasistencias_rechazadas = [r for r in registros_hoy if r.estado == 'Inasistencia Rechazada']
 
@@ -251,6 +300,10 @@ def dashboard_directivo():
         registros_a_tiempo=registros_a_tiempo,
         registros_tarde=registros_tarde,
         solicitudes_pendientes=solicitudes_pendientes,
+<<<<<<< HEAD
+=======
+        permisos_pendientes=permisos_pendientes,
+>>>>>>> 441bf2c (nose que ahi aqui)
         inasistencias_aprobadas=inasistencias_aprobadas,
         inasistencias_rechazadas=inasistencias_rechazadas,
         fecha_hoy=fecha_hoy
@@ -286,7 +339,11 @@ def dashboard_personal():
         usuario_id=session['usuario_id']
     ).order_by(AsistenciaDiaria.fecha.desc()).all()
     
-    return render_template('personal.html', mis_registros=mis_registros)
+    config = Configuracion.query.first()
+    usuario = Usuario.query.get(session['usuario_id'])
+    permisos_usados = Permiso.query.filter_by(usuario_id=usuario.id).filter(Permiso.estado != 'Rechazado').count()
+    return render_template('personal.html', mis_registros=mis_registros, usuario=usuario, config=config,
+                           permisos_usados=permisos_usados)
 
 # --- Gestión de Datos y Acciones ---
 
@@ -301,13 +358,21 @@ def configurar_hora():
         db.session.add(config)
 
     nueva_hora = request.form.get('hora_entrada')
+    nueva_salida = request.form.get('hora_salida') or '15:30'
+    nuevos_dias = request.form.getlist('dias_laborables')
+    limite_permisos = request.form.get('limite_permisos', '3')
     try:
         datetime.strptime(nueva_hora, '%H:%M')
+        datetime.strptime(nueva_salida, '%H:%M')
+        if not 0 <= int(limite_permisos):
+            raise ValueError
         config.hora_entrada_oficial = nueva_hora
+        config.dias_laborables = ','.join(nuevos_dias) or '0,1,2,3,4'
+        config.limite_permisos = int(limite_permisos)
         db.session.commit()
         flash('La hora de entrada oficial fue modificada correctamente.', 'success')
     except (ValueError, TypeError):
-        flash('Formato inválido para la hora de entrada. Use HH:MM.', 'danger')
+        flash('Revise las horas, los días laborables y el límite de permisos.', 'danger')
     return redirect(url_for('directivo_configuracion'))
 @app.route('/directivo/crear_usuario', methods=['POST'])
 def crear_usuario():
@@ -320,6 +385,8 @@ def crear_usuario():
     rol = request.form['rol']
     telefono = request.form.get('telefono')
     fecha_nac = request.form.get('fecha_nacimiento')
+    hora_entrada = request.form.get('hora_entrada') or '07:30'
+    hora_salida = request.form.get('hora_salida') or '15:30'
     
     # Evita la creación de un usuario con correo duplicado.
     if Usuario.query.filter_by(correo=correo).first():
@@ -336,10 +403,19 @@ def crear_usuario():
             flash('La fecha de nacimiento no tiene el formato esperado.', 'danger')
             return redirect(url_for('directivo_usuarios'))
 
+    try:
+        datetime.strptime(hora_entrada, '%H:%M')
+        datetime.strptime(hora_salida, '%H:%M')
+    except ValueError:
+        flash('El horario debe usar el formato HH:MM.', 'danger')
+        return redirect(url_for('directivo_usuarios'))
+
     nuevo_usuario = Usuario(
         nombre=nombre, apellido=apellido, correo=correo, rol=rol,
         telefono=telefono,
-        fecha_nacimiento=fecha_nacimiento
+        fecha_nacimiento=fecha_nacimiento,
+        hora_entrada=hora_entrada,
+        hora_salida=hora_salida
     )
     nuevo_usuario.set_password(password_plano)
     db.session.add(nuevo_usuario)
@@ -357,6 +433,8 @@ def editar_usuario(id):
     usuario.apellido = request.form['apellido']
     usuario.rol = request.form['rol']
     usuario.telefono = request.form.get('telefono')
+    usuario.hora_entrada = request.form.get('hora_entrada') or usuario.hora_entrada
+    usuario.hora_salida = request.form.get('hora_salida') or usuario.hora_salida
     db.session.commit()
     flash('Personal actualizado correctamente.', 'success')
     return redirect(url_for('directivo_usuarios'))
@@ -438,7 +516,11 @@ def registrar_asistencia():
         return redirect(url_for('login', next=request.path))
 
     usuario_id = session['usuario_id']
+<<<<<<< HEAD
     fecha_hoy = datetime.now().date()
+=======
+    fecha_hoy = ahora_venezuela().date()
+>>>>>>> 441bf2c (nose que ahi aqui)
 
     # 2. Si la asistencia ya fue registrada hoy, no permite duplicados.
     existe = AsistenciaDiaria.query.filter_by(usuario_id=usuario_id, fecha=fecha_hoy).first()
@@ -450,13 +532,25 @@ def registrar_asistencia():
         return redirect(url_for('dashboard_personal'))
 
     # 3. Determina el estado de puntualidad a partir de la configuración actual.
-    hora_actual = datetime.now().time()
+    momento = ahora_venezuela()
+    hora_actual = momento.time()
     config = Configuracion.query.first()
-    hora_limite = datetime.strptime(config.hora_entrada_oficial, "%H:%M").time()
+    if fecha_hoy.weekday() not in dias_laborables(config):
+        mensaje = 'Hoy no es un día laborable configurado.'
+        if is_ajax:
+            return jsonify({'ok': False, 'message': mensaje})
+        flash(mensaje, 'info')
+        return redirect(url_for('dashboard_personal'))
+
+    hora_entrada, _ = horario_de_usuario(Usuario.query.get(usuario_id), fecha_hoy, config)
+    hora_limite = datetime.strptime(hora_entrada, "%H:%M").time()
+    limite_dt = datetime.combine(fecha_hoy, hora_limite)
+    minutos_retraso = max(0, int((momento - limite_dt).total_seconds() // 60))
     estado = "A tiempo" if hora_actual <= hora_limite else "Tarde"
 
     nueva_asistencia = AsistenciaDiaria(
-        usuario_id=usuario_id, fecha=fecha_hoy, hora_registro=datetime.now(), estado=estado
+        usuario_id=usuario_id, fecha=fecha_hoy, hora_registro=momento, estado=estado,
+        minutos_retraso=minutos_retraso
     )
     db.session.add(nueva_asistencia)
     db.session.commit()
@@ -464,7 +558,11 @@ def registrar_asistencia():
     # 4. Para peticiones AJAX, devolvemos JSON; para navegación directa, seguimos mostrando la página de confirmación.
     icono = "✅" if estado == "A tiempo" else "⚠️"
     color_texto = "#198754" if estado == "A tiempo" else "#ffc107"
+<<<<<<< HEAD
     hora_str = datetime.now().strftime('%I:%M %p')
+=======
+    hora_str = momento.strftime('%I:%M %p')
+>>>>>>> 441bf2c (nose que ahi aqui)
 
     if is_ajax:
         return jsonify({'ok': True, 'message': 'Asistencia registrada correctamente.', 'estado': estado, 'hora': hora_str})
@@ -598,6 +696,77 @@ def rechazar_inasistencia(asistencia_id):
     flash('La justificación fue rechazada.', 'warning')
     return redirect(request.referrer or url_for('dashboard_directivo'))
 
+<<<<<<< HEAD
+=======
+@app.route('/personal/solicitar_permiso', methods=['POST'])
+def solicitar_permiso():
+    if not session.get('usuario_id'):
+        return redirect(url_for('login'))
+    usuario = Usuario.query.get(session['usuario_id'])
+    config = Configuracion.query.first()
+    usados = Permiso.query.filter_by(usuario_id=usuario.id).filter(Permiso.estado != 'Rechazado').count()
+    limite = usuario.limite_permisos if usuario.limite_permisos is not None else config.limite_permisos
+    if usados >= limite:
+        flash(f'Has alcanzado el límite de {limite} permisos.', 'warning')
+        return redirect(url_for('dashboard_personal'))
+    try:
+        fecha_inicio = datetime.strptime(request.form['fecha_inicio'], '%Y-%m-%d').date()
+        fecha_fin = datetime.strptime(request.form['fecha_fin'], '%Y-%m-%d').date()
+        if fecha_fin < fecha_inicio:
+            raise ValueError
+    except (KeyError, ValueError):
+        flash('El rango de fechas del permiso no es válido.', 'danger')
+        return redirect(url_for('dashboard_personal'))
+    archivo = request.files.get('archivo')
+    ruta_archivo = None
+    if archivo and archivo.filename:
+        ruta_archivo = secure_filename(archivo.filename)
+        archivo.save(os.path.join(app.config['UPLOAD_FOLDER'], ruta_archivo))
+    db.session.add(Permiso(usuario_id=usuario.id, fecha_inicio=fecha_inicio, fecha_fin=fecha_fin,
+                            motivo=request.form.get('motivo', 'Otro'),
+                            observaciones=request.form.get('observaciones'), archivo_adjunto=ruta_archivo))
+    db.session.commit()
+    flash('Solicitud de permiso enviada. No generará inasistencia mientras esté pendiente.', 'success')
+    return redirect(url_for('dashboard_personal'))
+
+@app.route('/directivo/permiso/<int:permiso_id>/<accion>', methods=['POST'])
+def resolver_permiso(permiso_id, accion):
+    if session.get('rol') != 'directivo' or accion not in ('aprobar', 'rechazar'):
+        return redirect(url_for('login'))
+    permiso = Permiso.query.get_or_404(permiso_id)
+    permiso.estado = 'Aprobado' if accion == 'aprobar' else 'Rechazado'
+    db.session.commit()
+    flash(f'Permiso {permiso.estado.lower()} correctamente.', 'success')
+    return redirect(request.referrer or url_for('dashboard_directivo'))
+
+@app.route('/directivo/registrar_asistencia_manual', methods=['POST'])
+def registrar_asistencia_manual():
+    if session.get('rol') != 'directivo':
+        return redirect(url_for('login'))
+    try:
+        usuario_id = int(request.form['usuario_id'])
+        fecha = datetime.strptime(request.form['fecha'], '%Y-%m-%d').date()
+        hora = datetime.strptime(request.form['hora'], '%H:%M')
+    except (KeyError, ValueError):
+        flash('Los datos del registro manual no son válidos.', 'danger')
+        return redirect(url_for('dashboard_directivo'))
+    if AsistenciaDiaria.query.filter_by(usuario_id=usuario_id, fecha=fecha).first():
+        flash('Ya existe un registro para esa persona y fecha.', 'warning')
+        return redirect(url_for('dashboard_directivo'))
+    usuario = Usuario.query.get_or_404(usuario_id)
+    config = Configuracion.query.first()
+    hora_entrada, _ = horario_de_usuario(usuario, fecha, config)
+    limite = datetime.strptime(hora_entrada, '%H:%M')
+    minutos = max(0, int((hora - limite).total_seconds() // 60))
+    estado = 'Tarde' if minutos else 'A tiempo'
+    db.session.add(AsistenciaDiaria(usuario_id=usuario_id, fecha=fecha,
+                                    hora_registro=datetime.combine(fecha, hora.time()), estado=estado,
+                                    minutos_retraso=minutos, registrada_manualmente=True))
+    db.session.commit()
+    flash('Asistencia manual registrada correctamente.', 'success')
+    return redirect(url_for('dashboard_directivo'))
+
+>>>>>>> 441bf2c (nose que ahi aqui)
 @app.route('/logout')
 def logout():
     """Cierra la sesión actual."""
@@ -610,7 +779,7 @@ def registrar_inasistencia():
     if not session.get('usuario_id'): return redirect(url_for('login'))
     
     usuario_id = session['usuario_id']
-    fecha_hoy = datetime.now().date()
+    fecha_hoy = ahora_venezuela().date()
     
     # Impide registrar una inasistencia si ya existe un registro para hoy.
     existe = AsistenciaDiaria.query.filter_by(usuario_id=usuario_id, fecha=fecha_hoy).first()

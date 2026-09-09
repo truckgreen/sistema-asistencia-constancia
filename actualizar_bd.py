@@ -1,6 +1,6 @@
 import sqlite3
 
-# Al estar en la raíz, ahora sí debe buscar dentro de 'instance/'
+
 conn = sqlite3.connect('instance/sistema_academico.db')
 cursor = conn.cursor()
 

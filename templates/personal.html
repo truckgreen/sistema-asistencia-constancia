@@ -23,6 +23,9 @@
                     <button class="btn btn-outline-danger btn-sm px-3" data-bs-toggle="modal" data-bs-target="#modalInasistencia">
                         <i class="bi bi-x-circle me-1"></i>Reportar Inasistencia
                     </button>
+                    <button class="btn btn-outline-warning btn-sm px-3" data-bs-toggle="modal" data-bs-target="#modalPermiso">
+                        <i class="bi bi-calendar-check me-1"></i>Solicitar Permiso
+                    </button>
                     <button class="btn btn-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#modalQR">
                         <i class="bi bi-qr-code-scan me-1"></i>Registrar Asistencia
                     </button>
@@ -60,6 +63,7 @@
                                     {% if registro.estado != 'Ausente' and registro.estado != 'Inasistencia Reportada' %}
                                         <i class="bi bi-clock me-1 text-muted"></i> 
                                         {{ registro.hora_registro.strftime('%I:%M:%S %p') }}
+                                        {% if registro.minutos_retraso %}<small class="text-warning d-block">+{{ registro.minutos_retraso }} min</small>{% endif %}
                                     {% else %}
                                         <span class="text-muted">--:--:--</span>
                                     {% endif %}
@@ -106,6 +110,22 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPermiso" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content rounded-4 border-0 shadow" method="POST" action="{{ url_for('solicitar_permiso') }}" enctype="multipart/form-data">
+            <div class="modal-header bg-light border-0"><h5 class="modal-title">Solicitar permiso</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body p-4">
+                <p class="small text-muted">Permisos usados: {{ permisos_usados }} / {{ usuario.limite_permisos or config.limite_permisos }}</p>
+                <div class="row g-2 mb-3"><div class="col"><label class="form-label">Desde</label><input type="date" name="fecha_inicio" class="form-control" required></div><div class="col"><label class="form-label">Hasta</label><input type="date" name="fecha_fin" class="form-control" required></div></div>
+                <select class="form-select mb-3" name="motivo" required><option value="salud">Cita médica</option><option value="personal">Asunto personal</option><option value="emergencia">Emergencia familiar</option><option value="otro">Otro</option></select>
+                <textarea class="form-control mb-3" name="observaciones" rows="3" placeholder="Detalles de la solicitud"></textarea>
+                <input type="file" class="form-control" name="archivo">
+            </div>
+            <div class="modal-footer border-0"><button type="submit" class="btn btn-warning w-100">Enviar solicitud</button></div>
+        </form>
     </div>
 </div>
 
