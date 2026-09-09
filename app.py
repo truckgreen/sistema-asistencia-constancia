@@ -286,21 +286,14 @@ def dashboard_directivo():
     if session.get('rol') != 'directivo':
         return redirect(url_for('login'))
 
-<<<<<<< HEAD
-    hoy = datetime.now()
-=======
     hoy = ahora_venezuela()
->>>>>>> 441bf2c (nose que ahi aqui)
     fecha_hoy = hoy.date()
 
     registros_hoy = AsistenciaDiaria.query.filter_by(fecha=fecha_hoy).all()
     registros_a_tiempo = [r for r in registros_hoy if r.estado == 'A tiempo']
     registros_tarde = [r for r in registros_hoy if r.estado == 'Tarde']
     solicitudes_pendientes = [r for r in registros_hoy if r.estado == 'Inasistencia Reportada']
-<<<<<<< HEAD
-=======
     permisos_pendientes = Permiso.query.filter_by(estado='Pendiente').order_by(Permiso.fecha_inicio).all()
->>>>>>> 441bf2c (nose que ahi aqui)
     inasistencias_aprobadas = [r for r in registros_hoy if r.estado == 'Inasistencia Aprobada']
     inasistencias_rechazadas = [r for r in registros_hoy if r.estado == 'Inasistencia Rechazada']
 
@@ -329,10 +322,7 @@ def dashboard_directivo():
         registros_a_tiempo=registros_a_tiempo,
         registros_tarde=registros_tarde,
         solicitudes_pendientes=solicitudes_pendientes,
-<<<<<<< HEAD
-=======
-        permisos_pendientes=permisos_pendientes,
->>>>>>> 441bf2c (nose que ahi aqui)
+    permisos_pendientes=permisos_pendientes,
         inasistencias_aprobadas=inasistencias_aprobadas,
         inasistencias_rechazadas=inasistencias_rechazadas,
         fecha_hoy=fecha_hoy
@@ -548,11 +538,7 @@ def registrar_asistencia():
         return redirect(url_for('login', next=request.path))
 
     usuario_id = session['usuario_id']
-<<<<<<< HEAD
-    fecha_hoy = datetime.now().date()
-=======
     fecha_hoy = ahora_venezuela().date()
->>>>>>> 441bf2c (nose que ahi aqui)
 
     # 2. Si la asistencia ya fue registrada hoy, no permite duplicados.
     existe = AsistenciaDiaria.query.filter_by(usuario_id=usuario_id, fecha=fecha_hoy).first()
@@ -590,11 +576,7 @@ def registrar_asistencia():
     # 4. Para peticiones AJAX, devolvemos JSON; para navegación directa, seguimos mostrando la página de confirmación.
     icono = "✅" if estado == "A tiempo" else "⚠️"
     color_texto = "#198754" if estado == "A tiempo" else "#ffc107"
-<<<<<<< HEAD
-    hora_str = datetime.now().strftime('%I:%M %p')
-=======
     hora_str = momento.strftime('%I:%M %p')
->>>>>>> 441bf2c (nose que ahi aqui)
 
     if is_ajax:
         return jsonify({'ok': True, 'message': 'Asistencia registrada correctamente.', 'estado': estado, 'hora': hora_str})
@@ -728,8 +710,6 @@ def rechazar_inasistencia(asistencia_id):
     flash('La justificación fue rechazada.', 'warning')
     return redirect(request.referrer or url_for('dashboard_directivo'))
 
-<<<<<<< HEAD
-=======
 @app.route('/personal/solicitar_permiso', methods=['POST'])
 def solicitar_permiso():
     if not session.get('usuario_id'):
@@ -798,7 +778,6 @@ def registrar_asistencia_manual():
     flash('Asistencia manual registrada correctamente.', 'success')
     return redirect(url_for('dashboard_directivo'))
 
->>>>>>> 441bf2c (nose que ahi aqui)
 @app.route('/logout')
 def logout():
     """Cierra la sesión actual."""
