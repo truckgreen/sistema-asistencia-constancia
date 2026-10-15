@@ -1,0 +1,6 @@
+{
+  "name": "Sistema Asistencia y Horarios La Constancia",
+  "description": "Sistema integral de control de asistencias, gestión de horarios, asignación de cátedras y agenda escolar para la U.E. La Constancia.",
+  "requestPermissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

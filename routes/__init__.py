@@ -1,1 +1,0 @@
-"""Blueprints de la aplicación."""
