@@ -71,6 +71,17 @@ interface AppContextType {
   // Helper
   getHorarioDeUsuario: (usuario: Usuario, fechaStr: string) => { hora_entrada: string; hora_salida: string };
   resetToDefaults: () => void;
+
+  // Retrocompatibilidad con temas y utilidades
+  palettes: any[];
+  currentPaletteId: string;
+  primaryColor: string;
+  accentColor: string;
+  cambiarPaleta: (id: string) => void;
+  cambiarColoresPersonalizados: (p: string, a: string) => void;
+  resetearColoresInstitucionales: () => void;
+  cargarDatosDemostracion: () => void;
+  vaciarRegistros: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -739,6 +750,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         eliminarAsignacion,
         getHorarioDeUsuario,
         resetToDefaults,
+        palettes: [
+          { id: 'institucional', nombre: 'Verde Institucional', primary: '#0C5528', accent: '#DF5C12' }
+        ],
+        currentPaletteId: 'institucional',
+        primaryColor: '#0C5528',
+        accentColor: '#DF5C12',
+        cambiarPaleta: () => {},
+        cambiarColoresPersonalizados: () => {},
+        resetearColoresInstitucionales: () => {},
+        cargarDatosDemostracion: () => {},
+        vaciarRegistros: () => resetToDefaults(),
       }}
     >
       {children}
