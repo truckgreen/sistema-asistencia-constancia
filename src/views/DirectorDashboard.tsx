@@ -40,12 +40,12 @@ export const DirectorDashboard: React.FC<DirectorDashboardProps> = ({ onNavigate
     eliminarEvento,
   } = useApp();
 
-  const todayStr = '2026-10-15'; // Base system date
-  const today = new Date(todayStr + 'T12:00:00');
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const today = useMemo(() => new Date(), []);
 
   // Manual attendance form state
   const [manualUser, setManualUser] = useState<string>('');
-  const [manualDate, setManualDate] = useState<string>(todayStr);
+  const [manualDate, setManualDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [manualTime, setManualTime] = useState<string>('07:30');
 
   // Filter teacher in calendar
@@ -258,7 +258,7 @@ export const DirectorDashboard: React.FC<DirectorDashboardProps> = ({ onNavigate
             </span>
             <span className="text-3xl font-extrabold text-slate-800">{registrosHoy.length}</span>
             <p className="text-[11px] text-slate-500 mt-2">
-              Marcaciones en 15/10/2026
+              Marcaciones en {today.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
             </p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -451,11 +451,15 @@ export const DirectorDashboard: React.FC<DirectorDashboardProps> = ({ onNavigate
                   className="w-full text-xs p-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-600"
                 >
                   <option value="">Seleccione personal...</option>
-                  {users.filter(u => u.rol !== 'directivo').map(u => (
-                    <option key={u.id} value={u.id}>
-                      {u.apellido}, {u.nombre} ({u.rol})
-                    </option>
-                  ))}
+                  {users.filter(u => u.rol !== 'directivo').length === 0 ? (
+                    <option value="" disabled>Sin personal registrado aún (vaya a Organización &gt; Personal)</option>
+                  ) : (
+                    users.filter(u => u.rol !== 'directivo').map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.apellido}, {u.nombre} ({u.rol})
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 

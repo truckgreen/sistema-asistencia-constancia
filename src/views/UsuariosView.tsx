@@ -307,65 +307,77 @@ export const UsuariosView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredStaff.map(p => (
-                  <tr key={p.id} className="hover:bg-slate-50">
-                    <td className="py-3 px-3">
-                      <div className="font-bold text-slate-900">
-                        {p.apellido}, {p.nombre}
-                      </div>
-                      <div className="text-[11px] text-slate-400 font-mono">{p.correo}</div>
-                    </td>
-                    <td className="py-3 px-3">
-                      <div className="text-slate-600 font-mono">{p.telefono || 'Sin teléfono'}</div>
-                      {p.fecha_nacimiento && (
-                        <div className="text-[10px] text-slate-400">
-                          Nac: {p.fecha_nacimiento}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-3 px-3">
-                      <span
-                        className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                          p.rol === 'personal'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : p.rol === 'administrativo'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}
-                      >
-                        {p.rol}
-                      </span>
-                      {p.departamento && (
-                        <div className="text-[11px] text-slate-500 mt-0.5">{p.departamento}</div>
-                      )}
-                    </td>
-                    <td className="py-3 px-3 font-mono text-slate-600 whitespace-nowrap">
-                      {p.hora_entrada || '07:30'} - {p.hora_salida || '15:30'}
-                    </td>
-                    <td className="py-3 px-3 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => openEditModal(p)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
-                          title="Editar funcionario"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (window.confirm(`¿Seguro que deseas eliminar a ${p.nombre} ${p.apellido}?`)) {
-                              eliminarUsuario(p.id);
-                            }
-                          }}
-                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
-                          title="Eliminar funcionario"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                {filteredStaff.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-xs text-slate-400">
+                      <Users className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <span className="font-semibold text-slate-600 block">No hay personal registrado en nómina.</span>
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Utilice el formulario de la izquierda para dar de alta docentes, administrativos y personal obrero.
+                      </p>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredStaff.map(p => (
+                    <tr key={p.id} className="hover:bg-slate-50">
+                      <td className="py-3 px-3">
+                        <div className="font-bold text-slate-900">
+                          {p.apellido}, {p.nombre}
+                        </div>
+                        <div className="text-[11px] text-slate-400 font-mono">{p.correo}</div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="text-slate-600 font-mono">{p.telefono || 'Sin teléfono'}</div>
+                        {p.fecha_nacimiento && (
+                          <div className="text-[10px] text-slate-400">
+                            Nac: {p.fecha_nacimiento}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span
+                          className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                            p.rol === 'personal'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : p.rol === 'administrativo'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          {p.rol}
+                        </span>
+                        {p.departamento && (
+                          <div className="text-[11px] text-slate-500 mt-0.5">{p.departamento}</div>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 font-mono text-slate-600 whitespace-nowrap">
+                        {p.hora_entrada || '07:30'} - {p.hora_salida || '15:30'}
+                      </td>
+                      <td className="py-3 px-3 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => openEditModal(p)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                            title="Editar funcionario"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`¿Seguro que deseas eliminar a ${p.nombre} ${p.apellido}?`)) {
+                                eliminarUsuario(p.id);
+                              }
+                            }}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                            title="Eliminar funcionario"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

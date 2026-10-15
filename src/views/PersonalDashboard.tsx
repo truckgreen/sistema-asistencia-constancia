@@ -30,7 +30,8 @@ export const PersonalDashboard: React.FC = () => {
   } = useApp();
 
   const user = currentUser;
-  const userId = user?.id || 2;
+  const userId = user?.id || 1;
+  const todayIso = new Date().toISOString().split('T')[0];
 
   // Modals state
   const [showQRModal, setShowQRModal] = useState(false);
@@ -41,8 +42,8 @@ export const PersonalDashboard: React.FC = () => {
   const [scanResult, setScanResult] = useState<{ ok: boolean; message: string; estado?: string; hora?: string } | null>(null);
 
   // Permiso form state
-  const [permisoStart, setPermisoStart] = useState('2026-10-18');
-  const [permisoEnd, setPermisoEnd] = useState('2026-10-19');
+  const [permisoStart, setPermisoStart] = useState(todayIso);
+  const [permisoEnd, setPermisoEnd] = useState(todayIso);
   const [permisoMotivo, setPermisoMotivo] = useState('salud');
   const [permisoObs, setPermisoObs] = useState('');
   const [permisoFile, setPermisoFile] = useState('');

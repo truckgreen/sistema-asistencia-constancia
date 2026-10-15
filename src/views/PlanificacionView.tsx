@@ -20,8 +20,9 @@ export const PlanificacionView: React.FC = () => {
   const [profesorId, setProfesorId] = useState<string>(
     users.find(u => u.rol === 'personal')?.id ? String(users.find(u => u.rol === 'personal')?.id) : ''
   );
-  const [fechaInicio, setFechaInicio] = useState('2026-10-16T08:00');
-  const [fechaFin, setFechaFin] = useState('2026-10-16T10:00');
+  const todayIso = new Date().toISOString().split('T')[0];
+  const [fechaInicio, setFechaInicio] = useState(`${todayIso}T08:00`);
+  const [fechaFin, setFechaFin] = useState(`${todayIso}T10:00`);
 
   const teachers = users.filter(u => u.rol === 'personal');
 

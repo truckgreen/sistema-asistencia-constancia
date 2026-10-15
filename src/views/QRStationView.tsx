@@ -39,7 +39,7 @@ export const QRStationView: React.FC<QRStationViewProps> = ({ onNavigate }) => {
   const [forceSimulatedOffline, setForceSimulatedOffline] = useState(false);
   const effectiveOnline = realIsOnline && !forceSimulatedOffline;
 
-  const [selectedUserToScan, setSelectedUserToScan] = useState<number>(currentUser?.id || 2);
+  const [selectedUserToScan, setSelectedUserToScan] = useState<number>(currentUser?.id || users[0]?.id || 1);
   const [scanResult, setScanResult] = useState<{ ok: boolean; message: string; estado?: string; hora?: string } | null>(null);
   const [currentTime, setCurrentTime] = useState<string>('');
 

@@ -39,7 +39,7 @@ export const HorariosView: React.FC<HorariosViewProps> = ({ initialUsuarioId }) 
   const roles = useMemo(() => Array.from(new Set(personalUsers.map(u => u.rol).filter(Boolean))), [personalUsers]);
   const departamentos = useMemo(() => Array.from(new Set(personalUsers.map(u => u.departamento).filter(Boolean))), [personalUsers]);
 
-  const [selectedUserId, setSelectedUserId] = useState<number>(initialUsuarioId || personalUsers[0]?.id || 2);
+  const [selectedUserId, setSelectedUserId] = useState<number>(initialUsuarioId || personalUsers[0]?.id || users[0]?.id || 1);
 
   const selectedUser = useMemo(() => users.find(u => u.id === selectedUserId), [users, selectedUserId]);
 
@@ -83,17 +83,13 @@ export const HorariosView: React.FC<HorariosViewProps> = ({ initialUsuarioId }) 
         }))
       );
     } else {
-      setCourseName("Segundo Grado 'A'");
-      setEditableClasses([
-        { nombre: 'Matemática', dia_semana: 0, hora_inicio: '07:00', hora_fin: '08:30', aula: 'Aula 4', tipo: 'clase' },
-        { nombre: 'Recreo', dia_semana: 0, hora_inicio: '08:30', hora_fin: '09:00', aula: 'Patio Central', tipo: 'receso' },
-        { nombre: 'Física', dia_semana: 0, hora_inicio: '09:00', hora_fin: '10:30', aula: 'Lab 1', tipo: 'clase' },
-      ]);
+      setCourseName("");
+      setEditableClasses([]);
     }
   }, [selectedUserId, selectedUser, personalSchedules, classes]);
 
   // Classes editing state
-  const [courseName, setCourseName] = useState<string>("Segundo Grado 'A'");
+  const [courseName, setCourseName] = useState<string>("");
   const [editableClasses, setEditableClasses] = useState<
     {
       nombre: string;
@@ -126,8 +122,8 @@ export const HorariosView: React.FC<HorariosViewProps> = ({ initialUsuarioId }) 
   const [assignTargetType, setAssignTargetType] = useState<'rol' | 'departamento' | 'usuario'>('rol');
   const [assignRole, setAssignRole] = useState<string>(roles[0] || 'personal');
   const [assignDept, setAssignDept] = useState<string>(departamentos[0] || 'Ciencias');
-  const [assignUser, setAssignUser] = useState<number>(personalUsers[0]?.id || 2);
-  const [assignStart, setAssignStart] = useState<string>('2026-10-15');
+  const [assignUser, setAssignUser] = useState<number>(personalUsers[0]?.id || users[0]?.id || 1);
+  const [assignStart, setAssignStart] = useState<string>(new Date().toISOString().split('T')[0]);
   const [assignEnd, setAssignEnd] = useState<string>('');
 
   const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
