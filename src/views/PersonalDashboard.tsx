@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   Clock,
@@ -13,8 +13,20 @@ import {
   UserCheck,
   FileText,
   ScanLine,
-  X
+  X,
+  Camera,
+  CameraOff,
+  UploadCloud,
+  IdCard,
+  Printer
 } from 'lucide-react';
+import {
+  generateQRCodeUrl,
+  getStaffQRPayload,
+  scanQRFromVideo,
+  scanQRFromFile,
+  playScanSuccessSound
+} from '../utils/qrHelper';
 
 export const PersonalDashboard: React.FC = () => {
   const {
@@ -32,14 +44,6 @@ export const PersonalDashboard: React.FC = () => {
   const user = currentUser;
   const userId = user?.id || 1;
   const todayIso = new Date().toISOString().split('T')[0];
-
-  // Modals state
-  const [showQRModal, setShowQRModal] = useState(false);
-  const [showPermisoModal, setShowPermisoModal] = useState(false);
-  const [showInasistenciaModal, setShowInasistenciaModal] = useState(false);
-
-  // Scan simulation feedback in QR modal
-  const [scanResult, setScanResult] = useState<{ ok: boolean; message: string; estado?: string; hora?: string } | null>(null);
 
   // Permiso form state
   const [permisoStart, setPermisoStart] = useState(todayIso);
@@ -72,10 +76,120 @@ export const PersonalDashboard: React.FC = () => {
     return events.filter(e => e.tipo !== 'clase' || e.profesor_id === userId);
   }, [events, userId]);
 
-  const handleScanAttendance = () => {
-    const res = registrarAsistencia(userId);
-    setScanResult(res);
+  // Modals state
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrModalTab, setQrModalTab] = useState<'scan' | 'carnet'>('scan');
+  const [personalQRUrl, setPersonalQRUrl] = useState<string>('');
+  const [showPermisoModal, setShowPermisoModal] = useState(false);
+  const [showInasistenciaModal, setShowInasistenciaModal] = useState(false);
+
+  // Camera & Scan state
+  const [isCamActive, setIsCamActive] = useState<boolean>(false);
+  const [camError, setCamError] = useState<string | null>(null);
+  const [scanResult, setScanResult] = useState<{ ok: boolean; message: string; estado?: string; hora?: string } | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const animRef = useRef<number | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  // Generate user's personal QR code
+  useEffect(() => {
+    if (user) {
+      const payload = getStaffQRPayload(user.id, `${user.nombre} ${user.apellido}`, user.rol);
+      generateQRCodeUrl(payload).then(setPersonalQRUrl);
+    }
+  }, [user]);
+
+  // Camera handlers
+  const startCamera = async () => {
+    setCamError(null);
+    try {
+      stopCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.setAttribute('playsinline', 'true');
+        await videoRef.current.play();
+        setIsCamActive(true);
+        startScanning();
+      }
+    } catch (err: any) {
+      console.error('Camera error in PersonalDashboard:', err);
+      setCamError('No se pudo acceder a la cámara. Puede pulsar "Registrar con 1 Clic" o subir una foto del código.');
+      setIsCamActive(false);
+    }
   };
+
+  const stopCamera = () => {
+    if (animRef.current) {
+      cancelAnimationFrame(animRef.current);
+      animRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsCamActive(false);
+  };
+
+  const startScanning = () => {
+    const loop = () => {
+      if (videoRef.current && canvasRef.current) {
+        const decoded = scanQRFromVideo(videoRef.current, canvasRef.current);
+        if (decoded) {
+          playScanSuccessSound();
+          const res = registrarAsistencia(userId, true);
+          setScanResult(res);
+          stopCamera();
+          return;
+        }
+      }
+      animRef.current = requestAnimationFrame(loop);
+    };
+    animRef.current = requestAnimationFrame(loop);
+  };
+
+  const handleScanAttendance = () => {
+    playScanSuccessSound();
+    const res = registrarAsistencia(userId, true);
+    setScanResult(res);
+    stopCamera();
+  };
+
+  const handleFileScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const decoded = await scanQRFromFile(file);
+      if (decoded) {
+        playScanSuccessSound();
+        const res = registrarAsistencia(userId, true);
+        setScanResult(res);
+      } else {
+        setScanResult({
+          ok: false,
+          message: 'No se detectó un código QR legible en la imagen seleccionada.',
+        });
+      }
+    } catch {
+      setScanResult({ ok: false, message: 'Error procesando la imagen.' });
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
 
   const handleSendPermiso = (e: React.FormEvent) => {
     e.preventDefault();
@@ -297,46 +411,192 @@ export const PersonalDashboard: React.FC = () => {
 
       </div>
 
-      {/* Modal: Registrar Asistencia (Scanner & Camera Simulation) */}
+      {/* Hidden helper canvas for personal dashboard scanning */}
+      <canvas ref={canvasRef} className="hidden" />
+      <input
+        type="file"
+        ref={fileRef}
+        onChange={handleFileScan}
+        accept="image/*"
+        className="hidden"
+      />
+
+      {/* Modal: Registrar Asistencia & Carnet Digital */}
       {showQRModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-200">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+            {/* Header */}
             <div className="bg-[#0C5528] text-white px-5 py-4 flex items-center justify-between">
               <h3 className="font-bold text-sm flex items-center gap-2">
                 <QrCode className="w-4 h-4 text-amber-300" />
-                Escanear Código QR de Entrada
+                Control de Asistencia con Código QR
               </h3>
               <button
-                onClick={() => setShowQRModal(false)}
+                onClick={() => {
+                  stopCamera();
+                  setShowQRModal(false);
+                }}
                 className="text-white/80 hover:text-white text-xl font-bold cursor-pointer"
               >
                 &times;
               </button>
             </div>
 
-            <div className="p-6 text-center space-y-4">
-              {/* Animated Scanner Box */}
-              <div className="relative w-48 h-48 mx-auto bg-slate-900 rounded-2xl flex items-center justify-center overflow-hidden border-2 border-emerald-500 shadow-inner">
-                {/* Scanner Grid Lines */}
-                <div className="absolute inset-0 bg-radial from-transparent to-slate-950/80 pointer-events-none" />
-                <div className="w-36 h-36 border border-emerald-400/40 rounded-xl relative flex items-center justify-center">
-                  <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent absolute top-1/2 -translate-y-1/2 animate-bounce" />
-                  <ScanLine className="w-12 h-12 text-emerald-400/60" />
-                </div>
-              </div>
-
-              <p className="text-xs text-slate-500">
-                Apunte la cámara al código QR de la estación de portería o pulse para registrar su asistencia instantáneamente.
-              </p>
-
+            {/* Modal Tabs */}
+            <div className="flex border-b border-slate-100 bg-slate-50 text-xs font-bold">
               <button
-                onClick={handleScanAttendance}
-                className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+                type="button"
+                onClick={() => {
+                  setQrModalTab('scan');
+                }}
+                className={`flex-1 py-2.5 px-3 flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  qrModalTab === 'scan'
+                    ? 'bg-white border-b-2 border-[#0C5528] text-[#0C5528]'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
               >
-                <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-                Validar Escaneo de Asistencia
+                <ScanLine className="w-3.5 h-3.5" />
+                Escanear Portería
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  stopCamera();
+                  setQrModalTab('carnet');
+                }}
+                className={`flex-1 py-2.5 px-3 flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  qrModalTab === 'carnet'
+                    ? 'bg-white border-b-2 border-[#0C5528] text-[#0C5528]'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <IdCard className="w-3.5 h-3.5" />
+                Mi Carnet Digital QR
+              </button>
+            </div>
 
+            <div className="p-5 text-center space-y-4">
+              {qrModalTab === 'scan' ? (
+                <>
+                  {/* Camera / Scanner Frame */}
+                  <div className="relative w-full max-w-xs mx-auto h-56 bg-slate-950 rounded-2xl overflow-hidden border-2 border-emerald-500/70 shadow-inner flex items-center justify-center">
+                    <video
+                      ref={videoRef}
+                      className={`w-full h-full object-cover ${isCamActive ? 'block' : 'hidden'}`}
+                      autoPlay
+                      muted
+                      playsInline
+                    />
+
+                    {!isCamActive && (
+                      <div className="p-4 text-center space-y-2 z-10">
+                        <div className="w-12 h-12 rounded-xl bg-slate-800 text-emerald-400 flex items-center justify-center mx-auto">
+                          <Camera className="w-6 h-6" />
+                        </div>
+                        <p className="text-xs text-slate-300">
+                          Active la cámara para escanear el QR institucional de portería
+                        </p>
+                        <button
+                          type="button"
+                          onClick={startCamera}
+                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition cursor-pointer"
+                        >
+                          Encender Cámara
+                        </button>
+                      </div>
+                    )}
+
+                    {isCamActive && (
+                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                        <div className="w-36 h-36 border-2 border-emerald-400 rounded-xl relative flex items-center justify-center">
+                          <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent absolute top-1/2 -translate-y-1/2 animate-bounce" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={stopCamera}
+                          className="absolute top-2 right-2 pointer-events-auto px-2 py-1 bg-black/60 text-white text-[10px] rounded-lg cursor-pointer"
+                        >
+                          Apagar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {camError && (
+                    <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs text-left">
+                      {camError}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={handleScanAttendance}
+                      className="w-full py-2.5 bg-[#0C5528] hover:bg-[#072e19] text-white font-bold rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-amber-300" />
+                      Registrar Asistencia Inmediata (1 Clic)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <UploadCloud className="w-3.5 h-3.5" />
+                      Subir foto o archivo con QR
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* Tab 2: Carnet Digital */
+                <div className="space-y-4">
+                  <div className="p-4 bg-emerald-50/60 border-2 border-emerald-300 rounded-2xl text-center">
+                    <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block mb-1">
+                      Credencial Digital Institucional
+                    </span>
+                    <div className="text-sm font-extrabold text-slate-900">
+                      {user?.nombre} {user?.apellido}
+                    </div>
+                    <div className="text-xs text-slate-500 capitalize">
+                      {user?.rol === 'personal' ? 'Docente' : user?.rol} · {user?.departamento || 'Institucional'}
+                    </div>
+
+                    <div className="my-3 p-3 bg-white rounded-xl inline-block border border-slate-200 shadow-xs">
+                      {personalQRUrl ? (
+                        <img
+                          src={personalQRUrl}
+                          alt="QR Personal"
+                          className="w-40 h-40 mx-auto object-contain"
+                        />
+                      ) : (
+                        <div className="w-40 h-40 flex items-center justify-center text-xs text-slate-400">
+                          Generando QR...
+                        </div>
+                      )}
+                      <div className="text-[10px] font-mono text-slate-500 mt-1">
+                        ID: #{user?.id}
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-slate-500">
+                      Muestre este código al escáner de portería al ingresar a la institución
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="w-full py-2 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    Imprimir Mi Carnet
+                  </button>
+                </div>
+              )}
+
+              {/* Scan result notification */}
               {scanResult && (
                 <div
                   className={`p-3 rounded-xl text-xs text-left flex items-start gap-2 ${
@@ -354,7 +614,8 @@ export const PersonalDashboard: React.FC = () => {
                     <div className="font-bold">{scanResult.message}</div>
                     {scanResult.estado && (
                       <div className="text-[11px] opacity-80 mt-0.5">
-                        Estatus: <strong>{scanResult.estado}</strong> · Hora: {scanResult.hora}
+                        Estatus: <strong>{scanResult.estado}</strong> · Hora:{' '}
+                        {scanResult.hora}
                       </div>
                     )}
                   </div>

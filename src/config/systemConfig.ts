@@ -23,7 +23,6 @@ export const DEFAULT_ADMIN_USER: Usuario = {
   nombre: "Director",
   apellido: "General",
   correo: "admin@institucion.edu",
-  password: "admin",
   telefono: "0412-0000000",
   hora_entrada: "07:30",
   hora_salida: "15:30",
@@ -31,6 +30,59 @@ export const DEFAULT_ADMIN_USER: Usuario = {
   rol: "directivo" as RolUsuario,
   departamento: "Dirección General",
 };
+
+// Personal institucional predeterminado para pruebas inmediatas y escaneo QR
+export const DEFAULT_INITIAL_USERS: Usuario[] = [
+  DEFAULT_ADMIN_USER,
+  {
+    id: 2,
+    nombre: "Carlos",
+    apellido: "Silva",
+    correo: "carlos.silva@institucion.edu",
+    telefono: "0414-1112233",
+    hora_entrada: "07:30",
+    hora_salida: "15:30",
+    limite_permisos: 3,
+    rol: "personal" as RolUsuario,
+    departamento: "Matemáticas y Ciencias",
+  },
+  {
+    id: 3,
+    nombre: "María",
+    apellido: "González",
+    correo: "maria.gonzalez@institucion.edu",
+    telefono: "0416-2223344",
+    hora_entrada: "07:30",
+    hora_salida: "15:30",
+    limite_permisos: 3,
+    rol: "personal" as RolUsuario,
+    departamento: "Lengua y Literatura",
+  },
+  {
+    id: 4,
+    nombre: "Juan",
+    apellido: "Pérez",
+    correo: "juan.perez@institucion.edu",
+    telefono: "0424-3334455",
+    hora_entrada: "07:00",
+    hora_salida: "15:00",
+    limite_permisos: 3,
+    rol: "obrero" as RolUsuario,
+    departamento: "Mantenimiento y Portería",
+  },
+  {
+    id: 5,
+    nombre: "Elena",
+    apellido: "Mendoza",
+    correo: "elena.mendoza@institucion.edu",
+    telefono: "0412-5556677",
+    hora_entrada: "07:30",
+    hora_salida: "15:30",
+    limite_permisos: 3,
+    rol: "administrativo" as RolUsuario,
+    departamento: "Control de Estudios y Secretaría",
+  },
+];
 
 // Parámetros por defecto de la jornada y puntualidad
 export const DEFAULT_SYSTEM_CONFIG: Configuracion = {

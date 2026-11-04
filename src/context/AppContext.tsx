@@ -12,6 +12,7 @@ import {
 } from '../types';
 import {
   DEFAULT_ADMIN_USER,
+  DEFAULT_INITIAL_USERS,
   DEFAULT_SYSTEM_CONFIG,
   STORAGE_KEY,
 } from '../config/systemConfig';
@@ -30,14 +31,14 @@ interface AppContextType {
   activeNotification: { message: string; type: 'success' | 'warning' | 'danger' | 'info' } | null;
 
   // Actions
-  login: (correo: string, password?: string) => boolean;
+  login: (correoOId?: string | number) => boolean;
   logout: () => void;
   switchUser: (id: number) => void;
   setNotification: (message: string, type: 'success' | 'warning' | 'danger' | 'info') => void;
   clearNotification: () => void;
 
   // Asistencias & QR
-  registrarAsistencia: (usuarioId: number) => { ok: boolean; message: string; estado?: string; hora?: string };
+  registrarAsistencia: (usuarioId: number, forzarNuevo?: boolean) => { ok: boolean; message: string; estado?: string; hora?: string; yaRegistrado?: boolean };
   registrarAsistenciaManual: (usuarioId: number, fecha: string, hora: string) => { ok: boolean; message: string };
   reportarInasistencia: (data: { usuario_id: number; motivo: string; observaciones?: string; archivo_adjunto?: string }) => void;
   aprobarInasistencia: (asistenciaId: number) => void;
@@ -87,23 +88,28 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Always start with empty data / clean single admin user
+  // Institutional users list (with realistic seeded staff)
   const [users, setUsers] = useState<Usuario[]>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_users`);
-      return saved ? JSON.parse(saved) : [DEFAULT_ADMIN_USER];
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      return DEFAULT_INITIAL_USERS;
     } catch {
-      return [DEFAULT_ADMIN_USER];
+      return DEFAULT_INITIAL_USERS;
     }
   });
 
-  // User must explicitly log in when entering the system
+  // Default active user is the Director, allowing direct access without login barrier
   const [currentUser, setCurrentUser] = useState<Usuario | null>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_currentUser`);
-      return saved ? JSON.parse(saved) : null;
+      if (saved) return JSON.parse(saved);
+      return DEFAULT_ADMIN_USER;
     } catch {
-      return null;
+      return DEFAULT_ADMIN_USER;
     }
   });
 
@@ -245,40 +251,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveNotification(null);
   };
 
-  const login = (correo: string, password?: string): boolean => {
-    const cleanMail = correo.trim().toLowerCase();
-    const cleanPass = password?.trim() || '';
+  const login = (correoOId?: string | number): boolean => {
+    let user: Usuario | undefined;
 
-    // Search in current users list
-    let user = users.find(u => u.correo.toLowerCase() === cleanMail);
-
-    // Fallback check against default admin user in case user changed email in form
-    if (!user && cleanMail === DEFAULT_ADMIN_USER.correo.toLowerCase()) {
-      user = DEFAULT_ADMIN_USER;
-    }
-
-    if (user) {
-      // Validate password
-      if (!user.password || user.password === cleanPass) {
-        setCurrentUser(user);
-        setNotification(`Bienvenido al sistema, ${user.nombre} ${user.apellido}`, 'success');
-        return true;
+    if (typeof correoOId === 'number') {
+      user = users.find(u => u.id === correoOId);
+    } else if (typeof correoOId === 'string' && correoOId.trim()) {
+      const clean = correoOId.trim().toLowerCase();
+      user = users.find(u => u.correo.toLowerCase() === clean);
+      if (!user) {
+        user = users.find(u => `${u.nombre} ${u.apellido}`.toLowerCase().includes(clean));
       }
     }
 
-    setNotification('Credenciales de acceso incorrectas.', 'danger');
+    // Default fallback to first user or default admin
+    if (!user) {
+      user = users[0] || DEFAULT_ADMIN_USER;
+    }
+
+    if (user) {
+      setCurrentUser(user);
+      setNotification(`Bienvenido al sistema, ${user.nombre} ${user.apellido}`, 'success');
+      return true;
+    }
+
     return false;
   };
 
   const logout = () => {
+    // When logging out, clear session or switch to another user without credential barrier
     setCurrentUser(null);
-    setNotification('Sesión cerrada correctamente.', 'info');
+    setNotification('Sesión cerrada. Seleccione un perfil para ingresar.', 'info');
   };
 
   const switchUser = (id: number) => {
     const u = users.find(user => user.id === id);
     if (u) {
       setCurrentUser(u);
+      setNotification(`Cambiado al perfil de ${u.nombre} ${u.apellido} (${u.rol})`, 'info');
     }
   };
 
@@ -320,22 +330,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
-  const registrarAsistencia = (usuarioId: number) => {
+  const registrarAsistencia = (usuarioId: number, forzarNuevo = false) => {
     const today = new Date();
     const fecha = today.toISOString().split('T')[0];
     const hours = String(today.getHours()).padStart(2, '0');
     const minutes = String(today.getMinutes()).padStart(2, '0');
     const currentTimeStr = `${hours}:${minutes}`;
 
-    // Validar si ya registró hoy
-    const existe = attendances.find(a => a.usuario_id === usuarioId && a.fecha === fecha);
-    if (existe) {
-      return { ok: false, message: 'Ya se encuentra registrada la asistencia para el día de hoy.' };
-    }
-
     const usuario = users.find(u => u.id === usuarioId);
     if (!usuario) {
       return { ok: false, message: 'Usuario no encontrado en el sistema.' };
+    }
+
+    // Validar si ya registró hoy
+    const existe = attendances.find(a => a.usuario_id === usuarioId && a.fecha === fecha);
+    if (existe && !forzarNuevo) {
+      const horaPrev = new Date(existe.hora_registro).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return {
+        ok: true,
+        message: `${usuario.nombre} ${usuario.apellido} ya tiene asistencia asentada hoy a las ${horaPrev} (${existe.estado}).`,
+        estado: existe.estado,
+        hora: horaPrev,
+        yaRegistrado: true,
+      };
     }
 
     const horario = getHorarioDeUsuario(usuario, fecha);
@@ -361,13 +378,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       registrada_manualmente: false,
     };
 
-    setAttendances(prev => [nuevaAsistencia, ...prev]);
+    setAttendances(prev => [nuevaAsistencia, ...prev.filter(a => !(a.usuario_id === usuarioId && a.fecha === fecha))]);
+
+    const msg = minutos_retraso > 0
+      ? `Asistencia de ${usuario.nombre} ${usuario.apellido} registrada: Tarde (+${minutos_retraso} min).`
+      : `Asistencia de ${usuario.nombre} ${usuario.apellido} registrada: A tiempo.`;
+
+    setNotification(msg, minutos_retraso > 0 ? 'warning' : 'success');
 
     return {
       ok: true,
-      message: `Asistencia de ${usuario.nombre} ${usuario.apellido} asentada (${estado}).`,
+      message: msg,
       estado,
       hora: currentTimeStr,
+      yaRegistrado: false,
     };
   };
 
@@ -694,9 +718,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem(`${STORAGE_KEY}_classes`);
     localStorage.removeItem(`${STORAGE_KEY}_permissions`);
 
-    // Reset to clean empty states
-    setUsers([DEFAULT_ADMIN_USER]);
-    setCurrentUser(null);
+    // Reset to clean default states
+    setUsers(DEFAULT_INITIAL_USERS);
+    setCurrentUser(DEFAULT_ADMIN_USER);
     setEvents([]);
     setAttendances([]);
     setConfig(DEFAULT_SYSTEM_CONFIG);

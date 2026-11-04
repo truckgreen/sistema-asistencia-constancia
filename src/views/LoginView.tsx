@@ -1,35 +1,27 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { ShieldCheck, Mail, KeyRound, ArrowRight } from 'lucide-react';
+import { ShieldCheck, UserCheck, ArrowRight, GraduationCap, Users } from 'lucide-react';
 import { INSTITUTION_CONFIG } from '../config/systemConfig';
 
 export const LoginView: React.FC = () => {
-  const { login } = useApp();
-  const [correo, setCorreo] = useState('');
-  const [password, setPassword] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
+  const { users, login } = useApp();
+  const [selectedUserId, setSelectedUserId] = useState<number>(users[0]?.id || 1);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg('');
-    if (!correo.trim()) {
-      setErrorMsg('Por favor ingrese su correo institucional.');
-      return;
-    }
-    const success = login(correo.trim(), password);
-    if (!success) {
-      setErrorMsg('Credenciales de acceso inválidas. Verifique su correo y contraseña.');
-    }
+  const handleQuickLogin = (userId: number) => {
+    login(userId);
   };
 
+  const directivos = users.filter(u => u.rol === 'directivo');
+  const personal = users.filter(u => u.rol !== 'directivo');
+
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 bg-gradient-to-br from-[#DF5C12] via-[#f58b25] to-[#0C5528] overflow-hidden">
-      {/* Background Decorative Circles */}
+    <div className="min-h-screen relative flex items-center justify-center p-4 bg-gradient-to-br from-[#DF5C12] via-[#ea7a21] to-[#0C5528] overflow-hidden">
+      {/* Decorative Circles */}
       <div className="absolute top-1/4 -left-20 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md bg-white/95 backdrop-blur-xl border border-white/60 shadow-2xl rounded-3xl p-8 relative z-10 transition-all">
-        {/* Top Icon */}
+      <div className="w-full max-w-lg bg-white/95 backdrop-blur-xl border border-white/60 shadow-2xl rounded-3xl p-6 sm:p-8 relative z-10 transition-all">
+        {/* Top Header */}
         <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-[#DF5C12] flex items-center justify-center mx-auto mb-4 shadow-inner">
           <ShieldCheck className="w-8 h-8" />
         </div>
@@ -41,88 +33,128 @@ export const LoginView: React.FC = () => {
           <p className="text-xs text-slate-500 mt-1 font-medium">
             {INSTITUTION_CONFIG.description}
           </p>
+          <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-[11px] font-bold text-emerald-800">
+            <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+            Acceso Directo Sin Contraseñas
+          </div>
         </div>
 
-        {errorMsg && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Correo Electrónico Institucional
-            </label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="email"
-                value={correo}
-                onChange={e => setCorreo(e.target.value)}
-                placeholder="ejemplo@institucion.edu"
-                required
-                autoComplete="email"
-                className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#DF5C12]/20 focus:border-[#DF5C12] transition"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Contraseña de Seguridad
-            </label>
-            <div className="relative">
-              <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                autoComplete="current-password"
-                className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#DF5C12]/20 focus:border-[#DF5C12] transition"
-              />
-            </div>
-          </div>
-
+        {/* Primary Direct Access Button */}
+        <div className="mb-6">
           <button
-            type="submit"
-            className="w-full py-3 px-4 bg-gradient-to-r from-[#DF5C12] to-[#c64803] hover:from-[#c64803] hover:to-[#a73b00] text-white font-bold rounded-xl shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 transition cursor-pointer"
+            type="button"
+            onClick={() => handleQuickLogin(users[0]?.id || 1)}
+            className="w-full py-3.5 px-5 bg-gradient-to-r from-[#0C5528] to-[#072e19] hover:from-[#0a4621] hover:to-[#041a0e] text-white font-bold rounded-2xl shadow-lg shadow-emerald-950/20 flex items-center justify-between transition cursor-pointer text-sm group"
           >
-            <ArrowRight className="w-4 h-4" />
-            Ingresar al Sistema
+            <div className="flex items-center gap-3 text-left">
+              <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-900 flex items-center justify-center font-bold">
+                <GraduationCap className="w-5 h-5 text-[#072e19]" />
+              </div>
+              <div>
+                <div className="font-extrabold text-white leading-tight">
+                  Ingresar como {users[0]?.nombre || 'Director'} {users[0]?.apellido || 'General'}
+                </div>
+                <div className="text-[11px] text-emerald-200/90 font-medium">
+                  Perfil Directivo · Control total y reportes
+                </div>
+              </div>
+            </div>
+            <ArrowRight className="w-4 h-4 text-amber-300 group-hover:translate-x-1 transition-transform" />
           </button>
-        </form>
+        </div>
 
-        {/* Credenciales de Acceso Rápido / Información de Inicio */}
-        <div className="mt-6 pt-5 border-t border-slate-100 text-center">
-          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 text-left">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Credenciales Iniciales de Acceso
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-[#0C5528]">
-                Directivo / Admin
-              </span>
-            </div>
-            <div className="space-y-1 text-xs text-slate-600 font-mono">
-              <div><span className="text-slate-400 font-sans">Correo:</span> <strong className="text-slate-800">admin@institucion.edu</strong></div>
-              <div><span className="text-slate-400 font-sans">Contraseña:</span> <strong className="text-slate-800">admin</strong></div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setCorreo('admin@institucion.edu');
-                setPassword('admin');
-                setErrorMsg('');
-              }}
-              className="mt-2.5 w-full py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-[#0C5528] border border-emerald-200 font-semibold text-xs rounded-lg transition text-center cursor-pointer"
-            >
-              Autocompletar credenciales de Administrador
-            </button>
+        {/* Profile Selector */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-600 px-1">
+            <span className="flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+              <Users className="w-3.5 h-3.5 text-slate-500" /> O selecciona tu perfil institucional
+            </span>
+            <span className="text-slate-400 font-normal">({users.length} miembros)</span>
           </div>
+
+          <div className="max-h-60 overflow-y-auto space-y-2 pr-1 divide-y divide-slate-100">
+            {/* Directivos */}
+            {directivos.map(u => (
+              <button
+                key={u.id}
+                type="button"
+                onClick={() => handleQuickLogin(u.id)}
+                className="w-full pt-2 first:pt-0 p-2.5 hover:bg-emerald-50/70 border border-transparent hover:border-emerald-200 rounded-xl flex items-center justify-between text-left transition cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-[#0C5528] flex items-center justify-center font-bold text-xs shrink-0">
+                    {u.nombre.charAt(0)}{u.apellido.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 group-hover:text-emerald-900">
+                      {u.nombre} {u.apellido}
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      {u.departamento || 'Dirección'}
+                    </div>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-[#0C5528] shrink-0">
+                  Directivo
+                </span>
+              </button>
+            ))}
+
+            {/* Docentes y Personal */}
+            {personal.map(u => (
+              <button
+                key={u.id}
+                type="button"
+                onClick={() => handleQuickLogin(u.id)}
+                className="w-full pt-2 p-2.5 hover:bg-orange-50/70 border border-transparent hover:border-orange-200 rounded-xl flex items-center justify-between text-left transition cursor-pointer group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center font-bold text-xs shrink-0">
+                    {u.nombre.charAt(0)}{u.apellido.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 group-hover:text-[#DF5C12]">
+                      {u.nombre} {u.apellido}
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      {u.departamento || 'Personal Institucional'}
+                    </div>
+                  </div>
+                </div>
+                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full shrink-0 ${
+                  u.rol === 'personal'
+                    ? 'bg-blue-100 text-blue-800'
+                    : u.rol === 'obrero'
+                    ? 'bg-amber-100 text-amber-900'
+                    : 'bg-purple-100 text-purple-800'
+                }`}>
+                  {u.rol === 'personal' ? 'Docente' : u.rol}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick Dropdown Alternative */}
+        <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2">
+          <select
+            value={selectedUserId}
+            onChange={e => setSelectedUserId(Number(e.target.value))}
+            className="flex-1 text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          >
+            {users.map(u => (
+              <option key={u.id} value={u.id}>
+                {u.apellido}, {u.nombre} ({u.rol})
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => handleQuickLogin(selectedUserId)}
+            className="px-4 py-2.5 bg-[#DF5C12] hover:bg-[#c64803] text-white font-bold text-xs rounded-xl transition cursor-pointer shrink-0"
+          >
+            Entrar
+          </button>
         </div>
       </div>
     </div>
