@@ -95,6 +95,35 @@ export const LoginView: React.FC = () => {
             Ingresar al Sistema
           </button>
         </form>
+
+        {/* Credenciales de Acceso Rápido / Información de Inicio */}
+        <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 text-left">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Credenciales Iniciales de Acceso
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-[#0C5528]">
+                Directivo / Admin
+              </span>
+            </div>
+            <div className="space-y-1 text-xs text-slate-600 font-mono">
+              <div><span className="text-slate-400 font-sans">Correo:</span> <strong className="text-slate-800">admin@institucion.edu</strong></div>
+              <div><span className="text-slate-400 font-sans">Contraseña:</span> <strong className="text-slate-800">admin</strong></div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setCorreo('admin@institucion.edu');
+                setPassword('admin');
+                setErrorMsg('');
+              }}
+              className="mt-2.5 w-full py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-[#0C5528] border border-emerald-200 font-semibold text-xs rounded-lg transition text-center cursor-pointer"
+            >
+              Autocompletar credenciales de Administrador
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
