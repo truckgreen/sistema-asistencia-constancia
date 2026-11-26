@@ -1,14 +1,17 @@
-# Entorno virtual
-.venv/
-venv/
+# Dependencias y compilación
+node_modules/
+dist/
+dev-dist/
+
+# Variables de entorno y credenciales locales
+.env
+.env.*
+!.env.example
+firebase-applet-config.json
 
 # Base de datos y configuración local
 instance/
 *.db
-
-# Archivos temporales de Python
-__pycache__/
-*.pyc
 
 # Archivos del sistema
 .DS_Store

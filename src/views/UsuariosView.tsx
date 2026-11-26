@@ -33,10 +33,8 @@ export const UsuariosView: React.FC = () => {
   const {
     users,
     currentUser,
-    sessionPasswords,
     crearUsuario,
     editarUsuario,
-    cambiarPasswordUsuario,
     eliminarUsuario,
   } = useApp();
 
@@ -55,7 +53,6 @@ export const UsuariosView: React.FC = () => {
   const [departamento, setDepartamento] = useState('');
   const [horaEntrada, setHoraEntrada] = useState('07:30');
   const [horaSalida, setHoraSalida] = useState('15:30');
-  const [creating, setCreating] = useState(false);
 
   // Visible passwords per row in table
   const [visibleRowPasswords, setVisibleRowPasswords] = useState<Record<number, boolean>>({});
@@ -63,7 +60,6 @@ export const UsuariosView: React.FC = () => {
 
   // Latest created/updated credential highlight banner
   const [recentCredential, setRecentCredential] = useState<{
-    id: number;
     nombreCompleto: string;
     correo: string;
     password: string;
@@ -88,7 +84,6 @@ export const UsuariosView: React.FC = () => {
   const [passwordModalUser, setPasswordModalUser] = useState<Usuario | null>(null);
   const [modalPassword, setModalPassword] = useState('');
   const [showModalPassword, setShowModalPassword] = useState(true);
-  const [savingPassword, setSavingPassword] = useState(false);
 
   const staffList = users.filter(u => u.id !== currentUser?.id);
 
@@ -110,15 +105,18 @@ export const UsuariosView: React.FC = () => {
     setTimeout(() => setCopiedId(prev => (prev === id ? null : prev)), 1800);
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nombre.trim() || !apellido.trim() || !correo.trim()) return;
 
-    setCreating(true);
-    const res = await crearUsuario({
-      nombre: nombre.trim(),
-      apellido: apellido.trim(),
-      correo: correo.trim(),
+    const cleanNombre = nombre.trim();
+    const cleanApellido = apellido.trim();
+    const cleanCorreo = correo.trim();
+
+    const res = crearUsuario({
+      nombre: cleanNombre,
+      apellido: cleanApellido,
+      correo: cleanCorreo,
       password: newPassword.trim() || undefined,
       telefono: telefono.trim() || undefined,
       fecha_nacimiento: fechaNacimiento || undefined,
@@ -128,14 +126,12 @@ export const UsuariosView: React.FC = () => {
       hora_salida: horaSalida,
       limite_permisos: 3,
     });
-    setCreating(false);
 
     if (res.ok) {
-      if (res.user && res.password) {
+      if (res.password) {
         setRecentCredential({
-          id: res.user.id,
-          nombreCompleto: `${res.user.nombre} ${res.user.apellido}`,
-          correo: res.user.correo,
+          nombreCompleto: `${cleanNombre} ${cleanApellido}`,
+          correo: cleanCorreo,
           password: res.password,
         });
         setShowRecentPass(true);
@@ -161,14 +157,15 @@ export const UsuariosView: React.FC = () => {
       departamento: u.departamento || '',
       hora_entrada: u.hora_entrada || '07:30',
       hora_salida: u.hora_salida || '15:30',
-      password: '',
+      password: u.password || '',
     });
   };
 
-  const handleSaveEdit = async (e: React.FormEvent) => {
+  const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
-    await editarUsuario(editingUser.id, {
+    const updatedPass = editForm.password.trim();
+    editarUsuario(editingUser.id, {
       nombre: editForm.nombre,
       apellido: editForm.apellido,
       telefono: editForm.telefono || undefined,
@@ -176,14 +173,13 @@ export const UsuariosView: React.FC = () => {
       departamento: editForm.departamento || undefined,
       hora_entrada: editForm.hora_entrada,
       hora_salida: editForm.hora_salida,
-      password: editForm.password.trim() || undefined,
+      ...(updatedPass ? { password: updatedPass } : {}),
     });
-    if (editForm.password.trim()) {
+    if (updatedPass) {
       setRecentCredential({
-        id: editingUser.id,
         nombreCompleto: `${editForm.nombre} ${editForm.apellido}`,
         correo: editingUser.correo,
-        password: editForm.password.trim(),
+        password: updatedPass,
       });
       setShowRecentPass(true);
     }
@@ -192,27 +188,23 @@ export const UsuariosView: React.FC = () => {
 
   const openPasswordModal = (u: Usuario) => {
     setPasswordModalUser(u);
-    setModalPassword(sessionPasswords[u.id] || '');
+    setModalPassword(u.password || '');
     setShowModalPassword(true);
   };
 
-  const handleSavePasswordModal = async (e: React.FormEvent) => {
+  const handleSavePasswordModal = (e: React.FormEvent) => {
     e.preventDefault();
     if (!passwordModalUser || modalPassword.trim().length < 4) return;
-    setSavingPassword(true);
-    const res = await cambiarPasswordUsuario(passwordModalUser.id, modalPassword.trim());
-    setSavingPassword(false);
-    if (res.ok) {
-      setRecentCredential({
-        id: passwordModalUser.id,
-        nombreCompleto: `${passwordModalUser.nombre} ${passwordModalUser.apellido}`,
-        correo: passwordModalUser.correo,
-        password: modalPassword.trim(),
-      });
-      setShowRecentPass(true);
-      setVisibleRowPasswords(prev => ({ ...prev, [passwordModalUser.id]: true }));
-      setPasswordModalUser(null);
-    }
+    const cleanPass = modalPassword.trim();
+    editarUsuario(passwordModalUser.id, { password: cleanPass });
+    setRecentCredential({
+      nombreCompleto: `${passwordModalUser.nombre} ${passwordModalUser.apellido}`,
+      correo: passwordModalUser.correo,
+      password: cleanPass,
+    });
+    setShowRecentPass(true);
+    setVisibleRowPasswords(prev => ({ ...prev, [passwordModalUser.id]: true }));
+    setPasswordModalUser(null);
   };
 
   const getRoleBadge = (r: RolUsuario) => {
@@ -404,7 +396,7 @@ export const UsuariosView: React.FC = () => {
             </div>
 
             <div>
-              <label className="block font-bold text-slate-600 mb-1">Rol Estructural / Portal</label>
+              <label className="block font-bold text-slate-600 mb-1">Rol Estructural / Cargo</label>
               <select
                 value={rol}
                 onChange={e => setRol(e.target.value as RolUsuario)}
@@ -451,11 +443,10 @@ export const UsuariosView: React.FC = () => {
 
             <button
               type="submit"
-              disabled={creating}
-              className="w-full py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-1.5 mt-3 disabled:opacity-60"
+              className="w-full py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-md transition cursor-pointer flex items-center justify-center gap-1.5 mt-3"
             >
               <Key className="w-4 h-4 text-amber-300" />
-              {creating ? 'Registrando...' : 'Registrar y Guardar Credenciales'}
+              Registrar y Guardar Credenciales
             </button>
           </form>
         </div>
@@ -525,7 +516,6 @@ export const UsuariosView: React.FC = () => {
                 ) : (
                   filteredStaff.map(p => {
                     const badge = getRoleBadge(p.rol);
-                    const sessionPass = sessionPasswords[p.id];
                     const isVisible = Boolean(visibleRowPasswords[p.id]);
 
                     return (
@@ -548,10 +538,10 @@ export const UsuariosView: React.FC = () => {
                           )}
                         </td>
                         <td className="py-3 px-3 whitespace-nowrap">
-                          {sessionPass ? (
+                          {p.password ? (
                             <div className="inline-flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200">
                               <span className="font-mono text-[11px] font-semibold text-slate-800">
-                                {isVisible ? sessionPass : '••••••••'}
+                                {isVisible ? p.password : '••••••••'}
                               </span>
                               <button
                                 type="button"
@@ -565,7 +555,7 @@ export const UsuariosView: React.FC = () => {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleCopy(sessionPass, p.id)}
+                                onClick={() => handleCopy(p.password!, p.id)}
                                 className="p-0.5 text-slate-500 hover:text-emerald-700 cursor-pointer"
                                 title="Copiar clave"
                               >
@@ -581,10 +571,10 @@ export const UsuariosView: React.FC = () => {
                               type="button"
                               onClick={() => openPasswordModal(p)}
                               className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-semibold transition cursor-pointer"
-                              title="Asignar o cambiar contraseña para visualizarla"
+                              title="Asignar contraseña"
                             >
                               <KeyRound className="w-3 h-3" />
-                              Cambiar / Ver
+                              Poner clave
                             </button>
                           )}
                         </td>
@@ -657,7 +647,7 @@ export const UsuariosView: React.FC = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="font-bold text-slate-700">Nueva Contraseña</label>
+                  <label className="font-bold text-slate-700">Contraseña</label>
                   <button
                     type="button"
                     onClick={() => {
@@ -674,7 +664,7 @@ export const UsuariosView: React.FC = () => {
                     type={showModalPassword ? 'text' : 'password'}
                     value={modalPassword}
                     onChange={e => setModalPassword(e.target.value)}
-                    placeholder="Ingrese nueva contraseña (mín. 4 caracteres)"
+                    placeholder="Ingrese la contraseña (mín. 4 caracteres)"
                     minLength={4}
                     required
                     className="w-full p-2.5 pr-10 bg-slate-50 border border-slate-200 rounded-xl font-mono text-sm focus:outline-none focus:border-[#0C5528]"
@@ -688,9 +678,6 @@ export const UsuariosView: React.FC = () => {
                     {showModalPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1.5">
-                  Al guardar, la clave quedará cifrada de forma segura y visible en tu sesión actual para poder copiarla y entregarla al funcionario.
-                </p>
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
@@ -703,10 +690,9 @@ export const UsuariosView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={savingPassword}
-                  className="px-4 py-2 bg-[#0C5528] text-white rounded-xl font-bold cursor-pointer disabled:opacity-60"
+                  className="px-4 py-2 bg-[#0C5528] text-white rounded-xl font-bold cursor-pointer"
                 >
-                  {savingPassword ? 'Guardando...' : 'Guardar Nueva Contraseña'}
+                  Guardar Contraseña
                 </button>
               </div>
             </form>
@@ -766,7 +752,7 @@ export const UsuariosView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-600 mb-1">Rol Estructural / Portal</label>
+                <label className="block font-bold text-slate-600 mb-1">Rol Estructural</label>
                 <select
                   value={editForm.rol}
                   onChange={e => setEditForm(prev => ({ ...prev, rol: e.target.value as RolUsuario }))}
@@ -812,7 +798,7 @@ export const UsuariosView: React.FC = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="font-bold text-slate-600">Cambiar Contraseña (opcional)</label>
+                  <label className="font-bold text-slate-600">Contraseña</label>
                   <button
                     type="button"
                     onClick={() => {
@@ -832,7 +818,7 @@ export const UsuariosView: React.FC = () => {
                     type={showEditPassword ? 'text' : 'password'}
                     value={editForm.password}
                     onChange={e => setEditForm(prev => ({ ...prev, password: e.target.value }))}
-                    placeholder="Dejar en blanco para mantener actual"
+                    placeholder="Asignar o cambiar contraseña"
                     minLength={4}
                     className="w-full p-2 pr-9 bg-slate-50 border border-slate-200 rounded-xl font-mono"
                   />
