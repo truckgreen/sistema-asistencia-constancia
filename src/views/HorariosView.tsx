@@ -168,7 +168,7 @@ export const HorariosView: React.FC<HorariosViewProps> = ({ initialUsuarioId }) 
     guardarClasesDocente(selectedUserId, courseName, editableClasses);
   };
 
-  const handleCreateTemplate = (e: React.FormEvent) => {
+  const handleCreateTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     const details = Object.entries(templateDays)
       .filter(([_, val]) => val.entrada && val.salida)
@@ -178,7 +178,7 @@ export const HorariosView: React.FC<HorariosViewProps> = ({ initialUsuarioId }) 
         hora_salida: val.salida,
       }));
 
-    const res = crearPlantilla(templateName, templateDesc, details);
+    const res = await crearPlantilla(templateName, templateDesc, details);
     if (res.ok) {
       setTemplateName('');
       setTemplateDesc('');

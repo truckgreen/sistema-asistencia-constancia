@@ -21,6 +21,12 @@ export const AppContent: React.FC = () => {
   const [currentView, setCurrentView] = useState<string>('director');
   const [navParams, setNavParams] = useState<any>({});
 
+  React.useEffect(() => {
+    if (currentUser) {
+      setCurrentView(currentUser.rol === 'directivo' ? 'director' : 'personal');
+    }
+  }, [currentUser?.id, currentUser?.rol]);
+
   const handleNavigate = (view: string, params?: any) => {
     setCurrentView(view);
     setNavParams(params || {});
