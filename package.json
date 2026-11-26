@@ -9,10 +9,11 @@
   },
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "tsc && vite build",
+    "build": "node node_modules/typescript/bin/tsc && node node_modules/vite/bin/vite.js build",
     "start": "node server.ts",
+    "db:push": "node node_modules/drizzle-kit/bin.cjs push --force --config=src/db/drizzle.config.ts",
     "preview": "vite preview --port 3000",
-    "lint": "tsc --noEmit"
+    "lint": "node node_modules/typescript/bin/tsc --noEmit"
   },
   "dependencies": {
     "@types/express": "^5.0.6",
