@@ -146,9 +146,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       headers.Authorization = `Bearer ${tokenRef.current}`;
     }
     const res = await fetch(url, { ...options, headers });
-    const json = await res.json().catch(() => ({}));
+    const rawText = await res.text();
+    let json: any = {};
+    try {
+      json = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      json = {};
+    }
     if (!res.ok) {
-      throw new Error(json.error || 'Error en la solicitud al servidor.');
+      throw new Error(json.error || `Error del servidor (${res.status}).`);
     }
     return json;
   };
@@ -364,9 +370,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
-  const loadBootstrap = async (token: string) => {
+  const applyBootstrapData = (token: string, data: any) => {
     tokenRef.current = token;
-    const data = await apiFetch('/api/bootstrap', { method: 'GET' });
     setCurrentUser(data.currentUser);
     setUsers(data.users || []);
     setEvents(data.events || []);
@@ -378,6 +383,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setClasses(data.classes || []);
     setPermissions(data.permissions || []);
     connectRealtime(token);
+  };
+
+  const loadBootstrap = async (token: string) => {
+    tokenRef.current = token;
+    const data = await apiFetch('/api/bootstrap', { method: 'GET' });
+    applyBootstrapData(token, data);
   };
 
   const refreshAuthStatus = async () => {
@@ -444,7 +455,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       manualSessionRef.current = true;
-      await loadBootstrap(json.token);
+      if (json.bootstrap) {
+        applyBootstrapData(json.token, json.bootstrap);
+      } else {
+        await loadBootstrap(json.token);
+      }
       setAdminClaimed(true);
       setSessionPasswords(prev => ({ ...prev, [json.user.id]: data.password }));
       setNotification(`Cuenta de Dirección creada. Bienvenido, ${json.user.nombre} ${json.user.apellido}.`, 'success');
@@ -465,17 +480,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier, password, expectedRole }),
       });
-      const json = await res.json().catch(() => ({}));
+      const rawText = await res.text();
+      let json: any = {};
+      try {
+        json = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        json = {};
+      }
       if (!res.ok) {
         return {
           ok: false,
-          message: json.error || 'Credenciales inválidas.',
+          message: json.error || `No se pudo iniciar sesión (${res.status}).`,
           suggestedRole: json.suggestedRole,
         };
       }
 
       manualSessionRef.current = true;
-      await loadBootstrap(json.token);
+      if (json.bootstrap) {
+        applyBootstrapData(json.token, json.bootstrap);
+      } else {
+        await loadBootstrap(json.token);
+      }
       setNotification(`Bienvenido al sistema, ${json.user.nombre} ${json.user.apellido}`, 'success');
       return { ok: true, message: 'Acceso concedido', user: json.user };
     } catch (error: any) {

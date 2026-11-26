@@ -265,13 +265,16 @@ export async function findUserByIdentifier(identifier: string): Promise<DbUserRo
   try {
     const clean = identifier.trim().toLowerCase();
     const allUsers = await db.select().from(users).orderBy(asc(users.id));
-    const found = allUsers.find(u => {
+    const exactMatch = allUsers.find(u => {
       const mail = u.correo.toLowerCase();
       const shortName = mail.split('@')[0];
       const fullName = `${u.nombre} ${u.apellido}`.toLowerCase();
       return mail === clean || shortName === clean || fullName === clean;
     });
-    return found ?? null;
+    if (exactMatch) return exactMatch;
+
+    const firstNameMatches = allUsers.filter(u => u.nombre.trim().toLowerCase() === clean);
+    return firstNameMatches.length === 1 ? firstNameMatches[0] : null;
   } catch (error) {
     console.error('Database query failed in findUserByIdentifier:', error);
     throw new Error('Error al buscar usuario.', { cause: error });

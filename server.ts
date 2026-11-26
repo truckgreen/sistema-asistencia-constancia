@@ -94,8 +94,9 @@ async function startServer() {
         rol: result.user.rol,
         correo: result.user.correo,
       });
+      const bootstrap = await getAllBootstrapData(result.user);
 
-      res.status(201).json({ token, user: sanitizeUser(result.user) });
+      res.status(201).json({ token, user: sanitizeUser(result.user), bootstrap });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'No se pudo registrar la cuenta de Dirección.' });
     }
@@ -131,7 +132,7 @@ async function startServer() {
           administrativo: 'Administrativo',
           obrero: 'Obrero',
         };
-        return res.status(403).json({
+        return res.status(409).json({
           error: `Esta cuenta pertenece al área de ${roleLabels[user.rol] || user.rol}. Selecciona esa pestaña para ingresar.`,
           suggestedRole: user.rol,
         });
@@ -142,8 +143,9 @@ async function startServer() {
         rol: user.rol,
         correo: user.correo,
       });
+      const bootstrap = await getAllBootstrapData(user);
 
-      res.json({ token, user: sanitizeUser(user) });
+      res.json({ token, user: sanitizeUser(user), bootstrap });
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'No se pudo iniciar sesión.' });
     }
