@@ -56,7 +56,7 @@ const ROLE_TABS: {
 ];
 
 export const LoginView: React.FC = () => {
-  const { adminClaimed, claimAdmin, login, loginWithGoogle } = useApp();
+  const { adminClaimed, isGoogleAuthEnabled, claimAdmin, login, loginWithGoogle } = useApp();
 
   // Standard Login state
   const [selectedRole, setSelectedRole] = useState<RolUsuario>('directivo');
@@ -291,20 +291,24 @@ export const LoginView: React.FC = () => {
                   </button>
                 </form>
 
-                <div className="relative flex items-center py-1">
-                  <div className="flex-grow border-t border-slate-200" />
-                  <span className="shrink mx-3 text-xs text-slate-400">o</span>
-                  <div className="flex-grow border-t border-slate-200" />
-                </div>
+                {isGoogleAuthEnabled && (
+                  <>
+                    <div className="relative flex items-center py-1">
+                      <div className="flex-grow border-t border-slate-200" />
+                      <span className="shrink mx-3 text-xs text-slate-400">o</span>
+                      <div className="flex-grow border-t border-slate-200" />
+                    </div>
 
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  disabled={isSubmitting}
-                  className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>Continuar con Google</span>
-                </button>
+                    <button
+                      type="button"
+                      onClick={handleGoogleSignIn}
+                      disabled={isSubmitting}
+                      className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <span>Continuar con Google</span>
+                    </button>
+                  </>
+                )}
               </>
             ) : (
               /* Standard Credentialed Role-Separated Login Form */
@@ -435,20 +439,24 @@ export const LoginView: React.FC = () => {
                   </button>
                 </form>
 
-                <div className="relative flex items-center py-1">
-                  <div className="flex-grow border-t border-slate-200" />
-                  <span className="shrink mx-3 text-xs text-slate-400">o</span>
-                  <div className="flex-grow border-t border-slate-200" />
-                </div>
+                {isGoogleAuthEnabled && (
+                  <>
+                    <div className="relative flex items-center py-1">
+                      <div className="flex-grow border-t border-slate-200" />
+                      <span className="shrink mx-3 text-xs text-slate-400">o</span>
+                      <div className="flex-grow border-t border-slate-200" />
+                    </div>
 
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  disabled={isSubmitting}
-                  className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>Continuar con Google</span>
-                </button>
+                    <button
+                      type="button"
+                      onClick={handleGoogleSignIn}
+                      disabled={isSubmitting}
+                      className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <span>Continuar con Google</span>
+                    </button>
+                  </>
+                )}
 
                 <p className="text-xs text-slate-400 text-center pt-1">
                   Si olvidaste tu usuario o contraseña, solicítalos en Dirección o Administración.

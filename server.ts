@@ -1,9 +1,9 @@
+import 'dotenv/config';
 import express from 'express';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createServer as createViteServer } from 'vite';
-import { AuthRequest, requireAuth, requireDirectivo } from './src/middleware/auth.ts';
+import { type AuthRequest, requireAuth, requireDirectivo } from './src/middleware/auth.ts';
 import { signSessionToken, verifyPassword } from './src/lib/security.ts';
 import { realtimeHub } from './src/lib/realtime.ts';
 import {
@@ -674,6 +674,7 @@ async function startServer() {
 
   // Vite integration in development, static assets in production
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -682,8 +683,11 @@ async function startServer() {
   } else {
     const distPath = path.join(__dirname, 'dist');
     app.use(express.static(distPath));
-    app.get('*', (_req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    app.use((req, res, next) => {
+      if (req.method === 'GET' && !req.path.startsWith('/api')) {
+        return res.sendFile(path.join(distPath, 'index.html'));
+      }
+      return next();
     });
   }
 

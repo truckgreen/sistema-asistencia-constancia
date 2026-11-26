@@ -1,7 +1,7 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { adminAuth } from '../lib/firebase-admin.ts';
 import { verifySessionToken } from '../lib/security.ts';
-import { DbUserRow, getOrCreateGoogleUser, getUserById } from '../db/queries.ts';
+import { type DbUserRow, getOrCreateGoogleUser, getUserById } from '../db/queries.ts';
 
 export interface AuthRequest extends Request {
   authUser?: DbUserRow;
@@ -38,7 +38,11 @@ export const requireAuth = async (
     }
   }
 
-  // 2. Otherwise verify Firebase ID Token (Google Sign-In)
+  // 2. Otherwise verify Firebase ID Token if Firebase Admin is configured
+  if (!adminAuth) {
+    return res.status(401).json({ error: 'Sesión expirada o token inválido.' });
+  }
+
   try {
     const decoded = await adminAuth.verifyIdToken(token);
     if (!decoded.email) {

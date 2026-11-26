@@ -21,6 +21,18 @@ if (!password) {
   throw new Error("SQL_ADMIN_PASSWORD must be set in environment variables.");
 }
 
+const isUnixSocket = sqlHost.startsWith("/");
+const sqlPort = !isUnixSocket && process.env.SQL_PORT ? Number(process.env.SQL_PORT) : undefined;
+const sslMode =
+  process.env.SQL_SSL === "true"
+    ? { rejectUnauthorized: false }
+    : process.env.SQL_SSL === "false" ||
+        isUnixSocket ||
+        sqlHost === "localhost" ||
+        sqlHost === "127.0.0.1"
+      ? false
+      : { rejectUnauthorized: false };
+
 export default defineConfig({
   schema: "./src/db/schema.ts",
   out: "./drizzle",
@@ -28,10 +40,11 @@ export default defineConfig({
   schemaFilter: ["public"],
   dbCredentials: {
     host: sqlHost,
+    ...(sqlPort ? { port: sqlPort } : {}),
     user: user,
     password: password,
     database: sqlDbName,
-    ssl: false,
+    ssl: sslMode,
   },
   verbose: true,
 });

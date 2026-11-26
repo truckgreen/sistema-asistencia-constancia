@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
-import { auth, googleAuthProvider } from '../lib/firebase';
+import { auth, googleAuthProvider, isFirebaseEnabled } from '../lib/firebase';
 import {
   Usuario,
   Evento,
@@ -29,6 +29,7 @@ interface AppContextType {
   sessionPasswords: Record<number, string>;
   authReady: boolean;
   adminClaimed: boolean | null;
+  isGoogleAuthEnabled: boolean;
   activeNotification: { message: string; type: 'success' | 'warning' | 'danger' | 'info' } | null;
 
   // Auth Actions
@@ -393,6 +394,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let active = true;
     refreshAuthStatus();
 
+    if (!auth) {
+      setAuthReady(true);
+      return () => {
+        active = false;
+        disconnectRealtime();
+      };
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (!active) return;
       if (fbUser && !manualSessionRef.current) {
@@ -475,6 +484,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const loginWithGoogle = async (): Promise<{ ok: boolean; message: string }> => {
+    if (!auth || !googleAuthProvider) {
+      return {
+        ok: false,
+        message: 'El inicio de sesión con Google no está habilitado en este entorno.',
+      };
+    }
     try {
       manualSessionRef.current = false;
       const result = await signInWithPopup(auth, googleAuthProvider);
@@ -499,7 +514,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     tokenRef.current = null;
     disconnectRealtime();
     try {
-      if (auth.currentUser) {
+      if (auth?.currentUser) {
         await signOut(auth);
       }
     } catch {
@@ -1115,6 +1130,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         sessionPasswords,
         authReady,
         adminClaimed,
+        isGoogleAuthEnabled: isFirebaseEnabled,
         activeNotification,
         claimAdmin,
         login,

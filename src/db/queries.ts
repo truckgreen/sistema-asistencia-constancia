@@ -10,7 +10,7 @@ import {
   scheduleAssignments,
   classSchedules,
   permissions,
-  DetallePlantillaDb,
+  type DetallePlantillaDb,
 } from './schema.ts';
 import { hashPassword } from '../lib/security.ts';
 

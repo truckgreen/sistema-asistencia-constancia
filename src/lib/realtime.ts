@@ -59,7 +59,7 @@ class RealtimeHub {
             if (session) {
               const dbUser = await getUserById(session.userId);
               if (dbUser) resolvedUser = { id: dbUser.id, rol: dbUser.rol };
-            } else {
+            } else if (adminAuth) {
               const decoded = await adminAuth.verifyIdToken(token);
               if (decoded.email) {
                 const dbUser = await getOrCreateGoogleUser(decoded.uid, decoded.email, decoded.name);
