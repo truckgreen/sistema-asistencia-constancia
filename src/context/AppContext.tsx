@@ -9,6 +9,7 @@ import {
   AsignacionHorario,
   ClaseHorario,
   Permiso,
+  RolUsuario,
 } from '../types';
 import {
   DEFAULT_ADMIN_USER,
@@ -31,9 +32,13 @@ interface AppContextType {
   activeNotification: { message: string; type: 'success' | 'warning' | 'danger' | 'info' } | null;
 
   // Actions
-  login: (correoOId?: string | number) => boolean;
+  login: (identifier: string, password: string, expectedRole?: RolUsuario) => {
+    ok: boolean;
+    message: string;
+    user?: Usuario;
+    suggestedRole?: RolUsuario;
+  };
   logout: () => void;
-  switchUser: (id: number) => void;
   setNotification: (message: string, type: 'success' | 'warning' | 'danger' | 'info') => void;
   clearNotification: () => void;
 
@@ -88,13 +93,24 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Institutional users list (with realistic seeded staff)
+  // Institutional users list (ensure every user has a password initialized)
   const [users, setUsers] = useState<Usuario[]>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_users`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((u: Usuario) => {
+            if (u.password && u.password.trim()) return u;
+            const seeded = DEFAULT_INITIAL_USERS.find(
+              d => d.id === u.id || d.correo.toLowerCase() === (u.correo || '').toLowerCase()
+            );
+            const fallbackPass =
+              seeded?.password ||
+              `${(u.nombre || 'clave').toLowerCase().replace(/\s+/g, '')}123`;
+            return { ...u, password: fallbackPass };
+          });
+        }
       }
       return DEFAULT_INITIAL_USERS;
     } catch {
@@ -102,14 +118,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  // Default active user is the Director, allowing direct access without login barrier
+  // Require explicit sign-in when no saved session exists
   const [currentUser, setCurrentUser] = useState<Usuario | null>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_currentUser`);
       if (saved) return JSON.parse(saved);
-      return DEFAULT_ADMIN_USER;
+      return null;
     } catch {
-      return DEFAULT_ADMIN_USER;
+      return null;
     }
   });
 
@@ -251,45 +267,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveNotification(null);
   };
 
-  const login = (correoOId?: string | number): boolean => {
-    let user: Usuario | undefined;
+  const login = (
+    identifier: string,
+    password: string,
+    expectedRole?: RolUsuario
+  ): { ok: boolean; message: string; user?: Usuario; suggestedRole?: RolUsuario } => {
+    const cleanId = identifier.trim().toLowerCase();
+    const cleanPass = password.trim();
 
-    if (typeof correoOId === 'number') {
-      user = users.find(u => u.id === correoOId);
-    } else if (typeof correoOId === 'string' && correoOId.trim()) {
-      const clean = correoOId.trim().toLowerCase();
-      user = users.find(u => u.correo.toLowerCase() === clean);
-      if (!user) {
-        user = users.find(u => `${u.nombre} ${u.apellido}`.toLowerCase().includes(clean));
-      }
+    if (!cleanId || !cleanPass) {
+      return { ok: false, message: 'Ingresa tu usuario o correo y tu contraseña.' };
     }
 
-    // Default fallback to first user or default admin
+    const user = users.find(u => {
+      const mail = u.correo.toLowerCase();
+      const shortUser = mail.split('@')[0];
+      const fullName = `${u.nombre} ${u.apellido}`.toLowerCase();
+      return mail === cleanId || shortUser === cleanId || fullName === cleanId;
+    });
+
     if (!user) {
-      user = users[0] || DEFAULT_ADMIN_USER;
+      return { ok: false, message: 'Usuario o correo no encontrado en la nómina.' };
     }
 
-    if (user) {
-      setCurrentUser(user);
-      setNotification(`Bienvenido al sistema, ${user.nombre} ${user.apellido}`, 'success');
-      return true;
+    const expectedPass =
+      user.password ||
+      DEFAULT_INITIAL_USERS.find(d => d.id === user.id)?.password ||
+      `${user.nombre.toLowerCase().replace(/\s+/g, '')}123`;
+
+    if (expectedPass !== cleanPass) {
+      return { ok: false, message: 'Contraseña incorrecta. Verifica tus credenciales.' };
     }
 
-    return false;
+    if (expectedRole && user.rol !== expectedRole) {
+      const roleLabels: Record<RolUsuario, string> = {
+        directivo: 'Dirección',
+        personal: 'Profesor',
+        administrativo: 'Administrativo',
+        obrero: 'Obrero',
+      };
+      return {
+        ok: false,
+        message: `Esta cuenta pertenece al área de ${roleLabels[user.rol]}. Selecciona esa pestaña para ingresar.`,
+        suggestedRole: user.rol,
+      };
+    }
+
+    setCurrentUser(user);
+    setNotification(`Bienvenido al sistema, ${user.nombre} ${user.apellido}`, 'success');
+    return { ok: true, message: 'Acceso concedido', user };
   };
 
   const logout = () => {
-    // When logging out, clear session or switch to another user without credential barrier
     setCurrentUser(null);
-    setNotification('Sesión cerrada. Seleccione un perfil para ingresar.', 'info');
-  };
-
-  const switchUser = (id: number) => {
-    const u = users.find(user => user.id === id);
-    if (u) {
-      setCurrentUser(u);
-      setNotification(`Cambiado al perfil de ${u.nombre} ${u.apellido} (${u.rol})`, 'info');
-    }
+    setNotification('Sesión cerrada correctamente.', 'info');
   };
 
   const getHorarioDeUsuario = (usuario: Usuario, fechaStr: string): { hora_entrada: string; hora_salida: string } => {
@@ -749,7 +780,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         activeNotification,
         login,
         logout,
-        switchUser,
         setNotification,
         clearNotification,
         registrarAsistencia,

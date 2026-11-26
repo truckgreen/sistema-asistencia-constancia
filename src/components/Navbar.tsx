@@ -28,7 +28,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
-  const { currentUser, users, switchUser, logout } = useApp();
+  const { currentUser, logout } = useApp();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   const isDirectivo = currentUser?.rol === 'directivo';
@@ -249,81 +249,35 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
             )}
           </nav>
 
-          {/* Right section: PWA install & User profile with Quick Switcher */}
+          {/* Right section: PWA install & User profile + Logout */}
           <div className="flex items-center gap-3">
             <PWAInstallButton />
-            
-            {/* User Profile Badge with Quick Switcher */}
-            <div className="relative">
+
+            <div className="flex items-center gap-2.5 bg-white/10 px-3 py-1.5 rounded-xl border border-white/15">
+              <div className="hidden sm:block text-right">
+                <div className="text-xs font-bold leading-tight text-white whitespace-nowrap">
+                  {currentUser?.nombre} {currentUser?.apellido}
+                </div>
+                <div className="text-[10px] text-emerald-200 font-medium whitespace-nowrap">
+                  {currentUser?.rol === 'directivo'
+                    ? 'Dirección'
+                    : currentUser?.rol === 'personal'
+                    ? 'Profesor'
+                    : currentUser?.rol === 'administrativo'
+                    ? 'Administrativo'
+                    : 'Obrero'}
+                  {currentUser?.departamento ? ` · ${currentUser.departamento}` : ''}
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={() => toggleDropdown('user_profile')}
-                className="flex items-center gap-2.5 bg-white/10 hover:bg-white/15 px-3 py-1.5 rounded-xl border border-white/15 transition cursor-pointer text-left"
-                title="Cambiar perfil institucional"
+                onClick={logout}
+                title="Cerrar sesión"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-red-500/80 text-white text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0"
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
-                <div className="hidden sm:block">
-                  <div className="text-xs font-bold leading-tight text-white flex items-center gap-1">
-                    {currentUser?.nombre} {currentUser?.apellido}
-                    <ChevronDown className="w-3 h-3 text-emerald-200" />
-                  </div>
-                  <div className="text-[10px] text-emerald-200 uppercase font-semibold">
-                    {currentUser?.rol} {currentUser?.departamento ? `· ${currentUser.departamento}` : ''}
-                  </div>
-                </div>
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Salir</span>
               </button>
-
-              {openDropdown === 'user_profile' && (
-                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl py-2 border border-slate-100 text-slate-800 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                  <div className="px-3 py-2 border-b border-slate-100">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Cambiar de Perfil (Acceso Instantáneo)
-                    </span>
-                  </div>
-                  <div className="max-h-56 overflow-y-auto divide-y divide-slate-50">
-                    {users.map(u => (
-                      <button
-                        key={u.id}
-                        onClick={() => {
-                          switchUser(u.id);
-                          setOpenDropdown(null);
-                        }}
-                        className={`w-full text-left px-3.5 py-2 hover:bg-emerald-50 text-xs flex items-center justify-between transition cursor-pointer ${
-                          currentUser?.id === u.id ? 'bg-emerald-50/80 font-bold text-[#0C5528]' : 'text-slate-700'
-                        }`}
-                      >
-                        <div>
-                          <div className="font-semibold text-xs text-slate-800">
-                            {u.nombre} {u.apellido}
-                          </div>
-                          <div className="text-[10px] text-slate-400">
-                            {u.departamento || (u.rol === 'directivo' ? 'Dirección' : 'Personal')}
-                          </div>
-                        </div>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                          u.rol === 'directivo'
-                            ? 'bg-emerald-100 text-[#0C5528]'
-                            : 'bg-amber-100 text-amber-900'
-                        }`}>
-                          {u.rol}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="pt-2 mt-1 border-t border-slate-100 px-2">
-                    <button
-                      onClick={() => {
-                        logout();
-                        setOpenDropdown(null);
-                      }}
-                      className="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2 font-medium cursor-pointer transition"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      Salir a pantalla de bienvenida
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>

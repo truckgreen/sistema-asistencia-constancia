@@ -1,161 +1,280 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { ShieldCheck, UserCheck, ArrowRight, GraduationCap, Users } from 'lucide-react';
 import { INSTITUTION_CONFIG } from '../config/systemConfig';
+import { RolUsuario } from '../types';
+import {
+  GraduationCap,
+  User,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  AlertCircle,
+  BookOpen,
+  Briefcase,
+  Wrench,
+  Shield,
+} from 'lucide-react';
+
+const ROLE_TABS: {
+  id: RolUsuario;
+  label: string;
+  description: string;
+  placeholder: string;
+  icon: React.FC<{ className?: string }>;
+}[] = [
+  {
+    id: 'directivo',
+    label: 'Dirección',
+    description: 'Panel directivo, reportes, personal y parámetros.',
+    placeholder: 'admin o admin@institucion.edu',
+    icon: Shield,
+  },
+  {
+    id: 'personal',
+    label: 'Profesor',
+    description: 'Asistencia diaria, horarios y solicitud de permisos.',
+    placeholder: 'carlos.silva o carlos.silva@institucion.edu',
+    icon: BookOpen,
+  },
+  {
+    id: 'administrativo',
+    label: 'Administrativo',
+    description: 'Control de jornada administrativa y permisos.',
+    placeholder: 'elena.mendoza o elena.mendoza@institucion.edu',
+    icon: Briefcase,
+  },
+  {
+    id: 'obrero',
+    label: 'Obrero',
+    description: 'Registro de jornada operativa y justificaciones.',
+    placeholder: 'juan.perez o juan.perez@institucion.edu',
+    icon: Wrench,
+  },
+];
 
 export const LoginView: React.FC = () => {
-  const { users, login } = useApp();
-  const [selectedUserId, setSelectedUserId] = useState<number>(users[0]?.id || 1);
+  const { login } = useApp();
 
-  const handleQuickLogin = (userId: number) => {
-    login(userId);
+  const [selectedRole, setSelectedRole] = useState<RolUsuario>('directivo');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [suggestedRole, setSuggestedRole] = useState<RolUsuario | null>(null);
+  const [logoError, setLogoError] = useState(false);
+
+  const activeTab = ROLE_TABS.find(t => t.id === selectedRole) || ROLE_TABS[0];
+
+  const handleRoleChange = (role: RolUsuario) => {
+    setSelectedRole(role);
+    setErrorMsg(null);
+    setSuggestedRole(null);
   };
 
-  const directivos = users.filter(u => u.rol === 'directivo');
-  const personal = users.filter(u => u.rol !== 'directivo');
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setSuggestedRole(null);
+
+    const result = login(identifier, password, selectedRole);
+    if (!result.ok) {
+      setErrorMsg(result.message);
+      if (result.suggestedRole) {
+        setSuggestedRole(result.suggestedRole);
+      }
+    }
+  };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 bg-gradient-to-br from-[#DF5C12] via-[#ea7a21] to-[#0C5528] overflow-hidden">
-      {/* Decorative Circles */}
-      <div className="absolute top-1/4 -left-20 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="w-full max-w-lg bg-white/95 backdrop-blur-xl border border-white/60 shadow-2xl rounded-3xl p-6 sm:p-8 relative z-10 transition-all">
-        {/* Top Header */}
-        <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-[#DF5C12] flex items-center justify-center mx-auto mb-4 shadow-inner">
-          <ShieldCheck className="w-8 h-8" />
-        </div>
-
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
-            {INSTITUTION_CONFIG.name}
-          </h1>
-          <p className="text-xs text-slate-500 mt-1 font-medium">
-            {INSTITUTION_CONFIG.description}
-          </p>
-          <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-[11px] font-bold text-emerald-800">
-            <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-            Acceso Directo Sin Contraseñas
-          </div>
-        </div>
-
-        {/* Primary Direct Access Button */}
-        <div className="mb-6">
-          <button
-            type="button"
-            onClick={() => handleQuickLogin(users[0]?.id || 1)}
-            className="w-full py-3.5 px-5 bg-gradient-to-r from-[#0C5528] to-[#072e19] hover:from-[#0a4621] hover:to-[#041a0e] text-white font-bold rounded-2xl shadow-lg shadow-emerald-950/20 flex items-center justify-between transition cursor-pointer text-sm group"
-          >
-            <div className="flex items-center gap-3 text-left">
-              <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-900 flex items-center justify-center font-bold">
-                <GraduationCap className="w-5 h-5 text-[#072e19]" />
+    <div className="min-h-screen bg-[#f6f8f7] flex items-center justify-center p-4 sm:p-6 lg:p-10">
+      <div className="w-full max-w-5xl bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12 items-stretch">
+        {/* Left Brand & Institutional Context Panel */}
+        <aside className="lg:col-span-5 bg-[#0C5528] text-white p-8 sm:p-10 flex flex-col justify-between gap-8">
+          <div className="space-y-6">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 overflow-hidden">
+                {!logoError ? (
+                  <img
+                    src="/img/logo.png"
+                    alt={`Escudo ${INSTITUTION_CONFIG.name}`}
+                    referrerPolicy="no-referrer"
+                    onError={() => setLogoError(true)}
+                    className="w-9 h-9 object-contain"
+                  />
+                ) : (
+                  <GraduationCap className="w-6 h-6 text-amber-300" />
+                )}
               </div>
               <div>
-                <div className="font-extrabold text-white leading-tight">
-                  Ingresar como {users[0]?.nombre || 'Director'} {users[0]?.apellido || 'General'}
+                <div className="text-sm font-bold tracking-tight text-white">
+                  {INSTITUTION_CONFIG.name}
                 </div>
-                <div className="text-[11px] text-emerald-200/90 font-medium">
-                  Perfil Directivo · Control total y reportes
+                <div className="text-xs text-emerald-100/80">
+                  Portal Institucional · Año Lectivo 2026
                 </div>
               </div>
             </div>
-            <ArrowRight className="w-4 h-4 text-amber-300 group-hover:translate-x-1 transition-transform" />
-          </button>
-        </div>
 
-        {/* Profile Selector */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-600 px-1">
-            <span className="flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
-              <Users className="w-3.5 h-3.5 text-slate-500" /> O selecciona tu perfil institucional
-            </span>
-            <span className="text-slate-400 font-normal">({users.length} miembros)</span>
+            <div className="space-y-3 pt-2">
+              <h1
+                className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight"
+                style={{ textWrap: 'balance' }}
+              >
+                Control de asistencias y gestión escolar
+              </h1>
+              <p className="text-sm text-emerald-100/85 leading-relaxed">
+                {INSTITUTION_CONFIG.description}. Accede con tu usuario institucional y contraseña asignada por la Dirección.
+              </p>
+            </div>
           </div>
 
-          <div className="max-h-60 overflow-y-auto space-y-2 pr-1 divide-y divide-slate-100">
-            {/* Directivos */}
-            {directivos.map(u => (
-              <button
-                key={u.id}
-                type="button"
-                onClick={() => handleQuickLogin(u.id)}
-                className="w-full pt-2 first:pt-0 p-2.5 hover:bg-emerald-50/70 border border-transparent hover:border-emerald-200 rounded-xl flex items-center justify-between text-left transition cursor-pointer group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-[#0C5528] flex items-center justify-center font-bold text-xs shrink-0">
-                    {u.nombre.charAt(0)}{u.apellido.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-800 group-hover:text-emerald-900">
-                      {u.nombre} {u.apellido}
-                    </div>
-                    <div className="text-[10px] text-slate-500">
-                      {u.departamento || 'Dirección'}
-                    </div>
-                  </div>
-                </div>
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-[#0C5528] shrink-0">
-                  Directivo
-                </span>
-              </button>
-            ))}
-
-            {/* Docentes y Personal */}
-            {personal.map(u => (
-              <button
-                key={u.id}
-                type="button"
-                onClick={() => handleQuickLogin(u.id)}
-                className="w-full pt-2 p-2.5 hover:bg-orange-50/70 border border-transparent hover:border-orange-200 rounded-xl flex items-center justify-between text-left transition cursor-pointer group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center font-bold text-xs shrink-0">
-                    {u.nombre.charAt(0)}{u.apellido.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-800 group-hover:text-[#DF5C12]">
-                      {u.nombre} {u.apellido}
-                    </div>
-                    <div className="text-[10px] text-slate-500">
-                      {u.departamento || 'Personal Institucional'}
-                    </div>
-                  </div>
-                </div>
-                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full shrink-0 ${
-                  u.rol === 'personal'
-                    ? 'bg-blue-100 text-blue-800'
-                    : u.rol === 'obrero'
-                    ? 'bg-amber-100 text-amber-900'
-                    : 'bg-purple-100 text-purple-800'
-                }`}>
-                  {u.rol === 'personal' ? 'Docente' : u.rol}
-                </span>
-              </button>
-            ))}
+          <div className="border-t border-white/15 pt-6 space-y-3 text-xs text-emerald-100/90">
+            <div className="font-semibold text-amber-300">Áreas habilitadas</div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-emerald-50/90">
+              <div>Dirección · Control y nómina</div>
+              <div>Profesor · Clases y asistencia</div>
+              <div>Administrativo · Gestión diaria</div>
+              <div>Obrero · Turnos y registros</div>
+            </div>
           </div>
-        </div>
+        </aside>
 
-        {/* Quick Dropdown Alternative */}
-        <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2">
-          <select
-            value={selectedUserId}
-            onChange={e => setSelectedUserId(Number(e.target.value))}
-            className="flex-1 text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          >
-            {users.map(u => (
-              <option key={u.id} value={u.id}>
-                {u.apellido}, {u.nombre} ({u.rol})
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => handleQuickLogin(selectedUserId)}
-            className="px-4 py-2.5 bg-[#DF5C12] hover:bg-[#c64803] text-white font-bold text-xs rounded-xl transition cursor-pointer shrink-0"
-          >
-            Entrar
-          </button>
-        </div>
+        {/* Right Credentialed Login Form */}
+        <section className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-center">
+          <div className="max-w-md w-full mx-auto space-y-6">
+            <div className="space-y-1">
+              <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                Iniciar sesión
+              </h2>
+              <p className="text-sm text-slate-500">
+                Selecciona tu rol e ingresa tus credenciales de acceso.
+              </p>
+            </div>
+
+            {/* Role Segmented Tabs */}
+            <div className="space-y-2">
+              <div
+                role="tablist"
+                aria-label="Tipo de personal"
+                className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/80"
+              >
+                {ROLE_TABS.map(tab => {
+                  const Icon = tab.icon;
+                  const active = selectedRole === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => handleRoleChange(tab.id)}
+                      className={`px-2.5 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition whitespace-nowrap shrink-0 cursor-pointer ${
+                        active
+                          ? 'bg-white text-[#0C5528] shadow-xs font-bold'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Icon className={`w-3.5 h-3.5 shrink-0 ${active ? 'text-[#DF5C12]' : 'text-slate-400'}`} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-slate-500 px-0.5">
+                {activeTab.description}
+              </p>
+            </div>
+
+            {/* Login Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="login-identifier" className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Usuario o correo electrónico
+                </label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    id="login-identifier"
+                    type="text"
+                    autoComplete="username"
+                    value={identifier}
+                    onChange={e => {
+                      setIdentifier(e.target.value);
+                      if (errorMsg) setErrorMsg(null);
+                    }}
+                    placeholder={activeTab.placeholder}
+                    required
+                    className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#0C5528] focus:ring-2 focus:ring-[#0C5528]/15 transition"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="login-password" className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Contraseña
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    id="login-password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={e => {
+                      setPassword(e.target.value);
+                      if (errorMsg) setErrorMsg(null);
+                    }}
+                    placeholder="Ingresa tu contraseña"
+                    required
+                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#0C5528] focus:ring-2 focus:ring-[#0C5528]/15 transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {errorMsg && (
+                <div
+                  role="alert"
+                  className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 flex items-start justify-between gap-2"
+                >
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <span>{errorMsg}</span>
+                  </div>
+                  {suggestedRole && (
+                    <button
+                      type="button"
+                      onClick={() => handleRoleChange(suggestedRole)}
+                      className="text-xs font-bold text-red-900 underline hover:no-underline whitespace-nowrap shrink-0 cursor-pointer"
+                    >
+                      Cambiar pestaña
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full py-3 px-4 bg-[#0C5528] hover:bg-[#094320] text-white font-bold text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              >
+                <span>Ingresar como {activeTab.label}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+
+            <p className="text-xs text-slate-400 text-center pt-2 border-t border-slate-100">
+              Si olvidaste tu usuario o contraseña, solicítalos en Dirección o Administración.
+            </p>
+          </div>
+        </section>
       </div>
     </div>
   );

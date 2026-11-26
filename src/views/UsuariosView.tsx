@@ -85,7 +85,7 @@ export const UsuariosView: React.FC = () => {
   const [modalPassword, setModalPassword] = useState('');
   const [showModalPassword, setShowModalPassword] = useState(true);
 
-  const staffList = users.filter(u => u.id !== currentUser?.id);
+  const staffList = users;
 
   const filteredStaff = staffList.filter(u => {
     if (roleFilter !== 'todos' && u.rol !== roleFilter) return false;
@@ -521,8 +521,11 @@ export const UsuariosView: React.FC = () => {
                     return (
                       <tr key={p.id} className="hover:bg-slate-50">
                         <td className="py-3 px-3">
-                          <div className="font-bold text-slate-900">
-                            {p.apellido}, {p.nombre}
+                          <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                            <span>{p.apellido}, {p.nombre}</span>
+                            {p.id === currentUser?.id && (
+                              <span className="text-[10px] font-semibold text-[#0C5528]">· Sesión actual</span>
+                            )}
                           </div>
                           <div className="text-[11px] text-slate-400 font-mono">{p.correo}</div>
                           {p.telefono && (
@@ -597,17 +600,19 @@ export const UsuariosView: React.FC = () => {
                             >
                               <Edit className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={() => {
-                                if (window.confirm(`¿Seguro que deseas eliminar a ${p.nombre} ${p.apellido}?`)) {
-                                  eliminarUsuario(p.id);
-                                }
-                              }}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
-                              title="Eliminar funcionario"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {p.id !== currentUser?.id && (
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`¿Seguro que deseas eliminar a ${p.nombre} ${p.apellido}?`)) {
+                                    eliminarUsuario(p.id);
+                                  }
+                                }}
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                                title="Eliminar funcionario"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
