@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
-import { Download, Smartphone, X, Check } from 'lucide-react';
+import { useApp } from '../context/AppContext';
+import { Download, Smartphone, X } from 'lucide-react';
 
 export const PWAInstallButton: React.FC = () => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
+  const { setNotification } = useApp();
   const [showIOSGuide, setShowIOSGuide] = useState(false);
 
   // If already running as an installed PWA, hide the button
@@ -80,7 +82,10 @@ export const PWAInstallButton: React.FC = () => {
   return (
     <button
       onClick={() => {
-        alert('Para instalar en esta computadora o teléfono, use la opción del navegador "Instalar aplicación" o "Agregar a pantalla de inicio".');
+        setNotification(
+          'Para instalar la aplicación, usa la opción del navegador "Instalar aplicación" o "Agregar a pantalla de inicio".',
+          'info'
+        );
       }}
       className="hidden sm:flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white px-3 py-1.5 text-xs font-bold transition cursor-pointer"
       title="Instalar App de Portería"

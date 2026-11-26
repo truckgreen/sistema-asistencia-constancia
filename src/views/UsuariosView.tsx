@@ -33,6 +33,7 @@ export const UsuariosView: React.FC = () => {
   const {
     users,
     currentUser,
+    sessionPasswords,
     crearUsuario,
     editarUsuario,
     eliminarUsuario,
@@ -84,6 +85,7 @@ export const UsuariosView: React.FC = () => {
   const [passwordModalUser, setPasswordModalUser] = useState<Usuario | null>(null);
   const [modalPassword, setModalPassword] = useState('');
   const [showModalPassword, setShowModalPassword] = useState(true);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const staffList = users;
 
@@ -105,7 +107,7 @@ export const UsuariosView: React.FC = () => {
     setTimeout(() => setCopiedId(prev => (prev === id ? null : prev)), 1800);
   };
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nombre.trim() || !apellido.trim() || !correo.trim()) return;
 
@@ -113,7 +115,7 @@ export const UsuariosView: React.FC = () => {
     const cleanApellido = apellido.trim();
     const cleanCorreo = correo.trim();
 
-    const res = crearUsuario({
+    const res = await crearUsuario({
       nombre: cleanNombre,
       apellido: cleanApellido,
       correo: cleanCorreo,
@@ -157,15 +159,15 @@ export const UsuariosView: React.FC = () => {
       departamento: u.departamento || '',
       hora_entrada: u.hora_entrada || '07:30',
       hora_salida: u.hora_salida || '15:30',
-      password: u.password || '',
+      password: sessionPasswords[u.id] || '',
     });
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
     const updatedPass = editForm.password.trim();
-    editarUsuario(editingUser.id, {
+    const res = await editarUsuario(editingUser.id, {
       nombre: editForm.nombre,
       apellido: editForm.apellido,
       telefono: editForm.telefono || undefined,
@@ -175,7 +177,7 @@ export const UsuariosView: React.FC = () => {
       hora_salida: editForm.hora_salida,
       ...(updatedPass ? { password: updatedPass } : {}),
     });
-    if (updatedPass) {
+    if (res.ok && updatedPass) {
       setRecentCredential({
         nombreCompleto: `${editForm.nombre} ${editForm.apellido}`,
         correo: editingUser.correo,
@@ -188,23 +190,25 @@ export const UsuariosView: React.FC = () => {
 
   const openPasswordModal = (u: Usuario) => {
     setPasswordModalUser(u);
-    setModalPassword(u.password || '');
+    setModalPassword(sessionPasswords[u.id] || '');
     setShowModalPassword(true);
   };
 
-  const handleSavePasswordModal = (e: React.FormEvent) => {
+  const handleSavePasswordModal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!passwordModalUser || modalPassword.trim().length < 4) return;
     const cleanPass = modalPassword.trim();
-    editarUsuario(passwordModalUser.id, { password: cleanPass });
-    setRecentCredential({
-      nombreCompleto: `${passwordModalUser.nombre} ${passwordModalUser.apellido}`,
-      correo: passwordModalUser.correo,
-      password: cleanPass,
-    });
-    setShowRecentPass(true);
-    setVisibleRowPasswords(prev => ({ ...prev, [passwordModalUser.id]: true }));
-    setPasswordModalUser(null);
+    const res = await editarUsuario(passwordModalUser.id, { password: cleanPass });
+    if (res.ok) {
+      setRecentCredential({
+        nombreCompleto: `${passwordModalUser.nombre} ${passwordModalUser.apellido}`,
+        correo: passwordModalUser.correo,
+        password: cleanPass,
+      });
+      setShowRecentPass(true);
+      setVisibleRowPasswords(prev => ({ ...prev, [passwordModalUser.id]: true }));
+      setPasswordModalUser(null);
+    }
   };
 
   const getRoleBadge = (r: RolUsuario) => {
@@ -541,10 +545,10 @@ export const UsuariosView: React.FC = () => {
                           )}
                         </td>
                         <td className="py-3 px-3 whitespace-nowrap">
-                          {p.password ? (
+                          {sessionPasswords[p.id] ? (
                             <div className="inline-flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200">
                               <span className="font-mono text-[11px] font-semibold text-slate-800">
-                                {isVisible ? p.password : '••••••••'}
+                                {isVisible ? sessionPasswords[p.id] : '••••••••'}
                               </span>
                               <button
                                 type="button"
@@ -558,7 +562,7 @@ export const UsuariosView: React.FC = () => {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleCopy(p.password!, p.id)}
+                                onClick={() => handleCopy(sessionPasswords[p.id], p.id)}
                                 className="p-0.5 text-slate-500 hover:text-emerald-700 cursor-pointer"
                                 title="Copiar clave"
                               >
@@ -569,6 +573,16 @@ export const UsuariosView: React.FC = () => {
                                 )}
                               </button>
                             </div>
+                          ) : p.has_password ? (
+                            <button
+                              type="button"
+                              onClick={() => openPasswordModal(p)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#0C5528] border border-emerald-200 text-[11px] font-semibold transition cursor-pointer"
+                              title="Cambiar contraseña"
+                            >
+                              <KeyRound className="w-3 h-3" />
+                              Cifrada · Cambiar
+                            </button>
                           ) : (
                             <button
                               type="button"
@@ -601,17 +615,36 @@ export const UsuariosView: React.FC = () => {
                               <Edit className="w-4 h-4" />
                             </button>
                             {p.id !== currentUser?.id && (
-                              <button
-                                onClick={() => {
-                                  if (window.confirm(`¿Seguro que deseas eliminar a ${p.nombre} ${p.apellido}?`)) {
-                                    eliminarUsuario(p.id);
-                                  }
-                                }}
-                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
-                                title="Eliminar funcionario"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              confirmDeleteId === p.id ? (
+                                <div className="inline-flex items-center gap-1 bg-red-50 border border-red-200 rounded-lg px-1.5 py-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      eliminarUsuario(p.id);
+                                      setConfirmDeleteId(null);
+                                    }}
+                                    className="text-[11px] font-bold text-red-700 hover:underline cursor-pointer px-1"
+                                  >
+                                    Confirmar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setConfirmDeleteId(null)}
+                                    className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 cursor-pointer px-1"
+                                  >
+                                    No
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteId(p.id)}
+                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                                  title="Eliminar funcionario"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )
                             )}
                           </div>
                         </td>

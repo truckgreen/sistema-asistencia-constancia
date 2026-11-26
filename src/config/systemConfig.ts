@@ -23,7 +23,6 @@ export const DEFAULT_ADMIN_USER: Usuario = {
   nombre: "Director",
   apellido: "General",
   correo: "admin@institucion.edu",
-  password: "director123",
   telefono: "0412-0000000",
   hora_entrada: "07:30",
   hora_salida: "15:30",
@@ -32,7 +31,7 @@ export const DEFAULT_ADMIN_USER: Usuario = {
   departamento: "Dirección General",
 };
 
-// Personal institucional predeterminado con credenciales iniciales
+// Personal institucional base
 export const DEFAULT_INITIAL_USERS: Usuario[] = [
   DEFAULT_ADMIN_USER,
   {
@@ -40,7 +39,6 @@ export const DEFAULT_INITIAL_USERS: Usuario[] = [
     nombre: "Carlos",
     apellido: "Silva",
     correo: "carlos.silva@institucion.edu",
-    password: "carlos123",
     telefono: "0414-1112233",
     hora_entrada: "07:30",
     hora_salida: "15:30",
@@ -53,7 +51,6 @@ export const DEFAULT_INITIAL_USERS: Usuario[] = [
     nombre: "María",
     apellido: "González",
     correo: "maria.gonzalez@institucion.edu",
-    password: "maria123",
     telefono: "0416-2223344",
     hora_entrada: "07:30",
     hora_salida: "15:30",
@@ -66,7 +63,6 @@ export const DEFAULT_INITIAL_USERS: Usuario[] = [
     nombre: "Juan",
     apellido: "Pérez",
     correo: "juan.perez@institucion.edu",
-    password: "juan123",
     telefono: "0424-3334455",
     hora_entrada: "07:00",
     hora_salida: "15:00",
@@ -79,7 +75,6 @@ export const DEFAULT_INITIAL_USERS: Usuario[] = [
     nombre: "Elena",
     apellido: "Mendoza",
     correo: "elena.mendoza@institucion.edu",
-    password: "elena123",
     telefono: "0412-5556677",
     hora_entrada: "07:30",
     hora_salida: "15:30",

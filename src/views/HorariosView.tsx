@@ -118,13 +118,28 @@ export const HorariosView: React.FC<HorariosViewProps> = ({ initialUsuarioId }) 
   });
 
   // Assign template form state
-  const [assignTemplateId, setAssignTemplateId] = useState<number>(templates[0]?.id || 1);
+  const [assignTemplateId, setAssignTemplateId] = useState<number>(templates[0]?.id || 0);
   const [assignTargetType, setAssignTargetType] = useState<'rol' | 'departamento' | 'usuario'>('rol');
   const [assignRole, setAssignRole] = useState<string>(roles[0] || 'personal');
   const [assignDept, setAssignDept] = useState<string>(departamentos[0] || 'Ciencias');
   const [assignUser, setAssignUser] = useState<number>(personalUsers[0]?.id || users[0]?.id || 1);
   const [assignStart, setAssignStart] = useState<string>(new Date().toISOString().split('T')[0]);
   const [assignEnd, setAssignEnd] = useState<string>('');
+
+  React.useEffect(() => {
+    if (templates.length > 0 && !templates.some(t => t.id === assignTemplateId)) {
+      setAssignTemplateId(templates[0].id);
+    }
+  }, [templates, assignTemplateId]);
+
+  React.useEffect(() => {
+    if (users.length > 0 && !users.some(u => u.id === selectedUserId)) {
+      setSelectedUserId(personalUsers[0]?.id || users[0].id);
+    }
+    if (users.length > 0 && !users.some(u => u.id === assignUser)) {
+      setAssignUser(personalUsers[0]?.id || users[0].id);
+    }
+  }, [users, personalUsers, selectedUserId, assignUser]);
 
   const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   const dayShorts = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];

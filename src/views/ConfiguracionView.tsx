@@ -17,6 +17,13 @@ export const ConfiguracionView: React.FC = () => {
   const [diasLaborables, setDiasLaborables] = useState<number[]>(config.dias_laborables);
   const [limitePermisos, setLimitePermisos] = useState<number>(config.limite_permisos);
 
+  React.useEffect(() => {
+    setHoraEntrada(config.hora_entrada_oficial);
+    setHoraSalida(config.hora_salida_oficial || '15:30');
+    setDiasLaborables(config.dias_laborables);
+    setLimitePermisos(config.limite_permisos);
+  }, [config]);
+
   const days = [
     { num: 0, label: 'Lun' },
     { num: 1, label: 'Mar' },

@@ -16,7 +16,7 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { CheckCircle2, AlertTriangle, AlertCircle, Info, X } from 'lucide-react';
 
 export const AppContent: React.FC = () => {
-  const { currentUser, activeNotification, clearNotification } = useApp();
+  const { currentUser, authReady, activeNotification, clearNotification } = useApp();
 
   const [currentView, setCurrentView] = useState<string>('director');
   const [navParams, setNavParams] = useState<any>({});
@@ -32,6 +32,16 @@ export const AppContent: React.FC = () => {
     setNavParams(params || {});
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  if (!authReady) {
+    return (
+      <div className="min-h-screen bg-[#f6f8f7] flex items-center justify-center p-6">
+        <div className="bg-white border border-slate-200 rounded-2xl px-6 py-5 text-sm font-semibold text-slate-600 shadow-xs">
+          Cargando portal institucional...
+        </div>
+      </div>
+    );
+  }
 
   // If not logged in, render Login
   if (!currentUser) {

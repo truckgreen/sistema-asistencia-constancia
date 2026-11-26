@@ -87,6 +87,7 @@ export const QRStationView: React.FC<QRStationViewProps> = ({ onNavigate }) => {
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cooldownRef = useRef<boolean>(false);
 
   // Offline queue state
   const [offlineQueue, setOfflineQueue] = useState<OfflineScanRecord[]>(() => {
@@ -212,8 +213,10 @@ export const QRStationView: React.FC<QRStationViewProps> = ({ onNavigate }) => {
     }
 
     // Set cooldown to prevent immediate repeated scanning
+    cooldownRef.current = true;
     setIsScanningCooldown(true);
     setTimeout(() => {
+      cooldownRef.current = false;
       setIsScanningCooldown(false);
     }, 2800);
   };
@@ -276,9 +279,9 @@ export const QRStationView: React.FC<QRStationViewProps> = ({ onNavigate }) => {
   // Continuous Frame Scanning Loop
   const startScanningLoop = () => {
     const scanFrame = () => {
-      if (!isCameraActive && !videoRef.current) return;
+      if (!streamRef.current || !videoRef.current) return;
 
-      if (videoRef.current && canvasRef.current && !isScanningCooldown) {
+      if (videoRef.current && canvasRef.current && !cooldownRef.current) {
         const decoded = scanQRFromVideo(videoRef.current, canvasRef.current);
         if (decoded) {
           handleProcessScannedCode(decoded);

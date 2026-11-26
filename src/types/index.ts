@@ -13,6 +13,7 @@ export interface Usuario {
   limite_permisos?: number;
   rol: RolUsuario;
   departamento?: string;
+  has_password?: boolean;
 }
 
 export type TipoEvento = 'clase' | 'feriado' | 'institucional';
